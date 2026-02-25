@@ -3,7 +3,7 @@
     $servername = "localhost";
     $username = "root";
     $password = "";
-    $database_name = "g12.it1_patagane-gelaga-pelegrino";
+    $database_name = "Hospitalid_db";
     $port = 3306;
 
     // enable mysqli exceptions for clearer errors during development

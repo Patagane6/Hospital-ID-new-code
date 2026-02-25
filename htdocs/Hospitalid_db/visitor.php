@@ -1,4 +1,8 @@
-<?php ob_start(); require_once __DIR__ . '/Includes/database.php'; ?>
+<?php ob_start(); require_once __DIR__ . '/Includes/database.php'; 
+
+// Set timezone to Philippines
+date_default_timezone_set('Asia/Manila');
+?>
 
 <?php
 
@@ -28,10 +32,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_visitor']) && $co
         'Other'
     ];
     $valid_id_raw = $_POST['valid_id'] ?? '';
-    if (!in_array($valid_id_raw, $allowed_ids, true)) {
+    if ($valid_id_raw === 'Other') {
+        $other_id = trim($_POST['valid_id_other'] ?? '');
+        if ($other_id === '') {
+            $add_error = $add_error ?: 'Please specify the other ID type.';
+            $valid_id = '';
+        } else {
+            $valid_id = $conn->real_escape_string($other_id);
+        }
+    } elseif (!in_array($valid_id_raw, $allowed_ids, true)) {
         $add_error = $add_error ?: 'Invalid ID type selected.';
+        $valid_id = '';
+    } else {
+        $valid_id = $conn->real_escape_string($valid_id_raw);
     }
-    $valid_id = $conn->real_escape_string($valid_id_raw);
 
     $number_of_visitors = intval($_POST['number_of_visitors'] ?? 0);
 
@@ -77,7 +91,8 @@ if (isset($_GET['delete']) && $conn) {
         <h1>🏥 Hospital Visitor System</h1>
         <nav class="header-nav">
             <a href="index.php" class="nav-link">Dashboard</a>
-            <a href="visitor.php" class="nav-link active">Visitors</a>
+            <a href="visitor.php" class="nav-link active">Add Visitor</a>
+            <a href="all_visitors.php" class="nav-link">All Visitors</a>
         </nav>
     </div>
 </header>
@@ -106,7 +121,7 @@ if (isset($_GET['delete']) && $conn) {
                            title="Enter exactly 11 digits" required>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" id="valid-id-group">
                     <label for="valid_id">Type of Valid ID</label>
                     <select name="valid_id" id="valid_id" required>
                         <option value="">-- Select ID Type --</option>
@@ -119,12 +134,18 @@ if (isset($_GET['delete']) && $conn) {
                         <option>Student ID</option>
                         <option>Other</option>
                     </select>
+                          <div id="other-inline" style="display:none; margin-top:0.5rem; gap:0.5rem; align-items:center;">
+                           <input type="text" name="valid_id_other" id="valid_id_other" placeholder="If Other, please specify" 
+                               style="flex:1; box-sizing:border-box;">
+                           <button type="button" id="choose-from-list" title="Choose from list" 
+                                style="background:#f0f0f0;border:1px solid #cfcfcf;padding:6px 8px;cursor:pointer;">Choose</button>
+                          </div>
                 </div>
 
                 <div class="form-group">
                     <label for="number_of_visitors">Number of Visitors</label>
                     <input type="number" name="number_of_visitors" id="number_of_visitors" 
-                           min="1" placeholder="Enter number" required>
+                           min="0" placeholder="Enter number" required>
                 </div>
             </div>
 
@@ -186,13 +207,75 @@ if (isset($_GET['delete']) && $conn) {
     });
     </script>
 
+    <script>
+    document.addEventListener('DOMContentLoaded', function(){
+        var validSelect = document.getElementById('valid_id');
+        var otherInput = document.getElementById('valid_id_other');
+
+        var otherInline = document.getElementById('other-inline');
+
+        function showOtherInput() {
+            if (!validSelect || !otherInline || !otherInput) return;
+            // keep select value as 'Other' so server-side can detect it
+            validSelect.style.display = 'none';
+            otherInline.style.display = 'flex';
+            otherInput.required = true;
+            otherInput.focus();
+        }
+
+        function hideOtherInput() {
+            if (!validSelect || !otherInline || !otherInput) return;
+            otherInline.style.display = 'none';
+            otherInput.required = false;
+            otherInput.value = '';
+            validSelect.style.display = '';
+            validSelect.focus();
+        }
+
+        if (validSelect) {
+            validSelect.addEventListener('change', function(){
+                if (validSelect.value === 'Other') {
+                    showOtherInput();
+                }
+            });
+        }
+
+        // allow Esc key to cancel the Other input and return to select
+        if (otherInput) {
+            otherInput.addEventListener('keydown', function(e){
+                if (e.key === 'Escape') {
+                    validSelect.value = '';
+                    hideOtherInput();
+                }
+            });
+        }
+
+        // Allow clicking the 'Choose' button to return to the select options
+        var chooseBtn = document.getElementById('choose-from-list');
+        if (chooseBtn) {
+            chooseBtn.addEventListener('click', function(){
+                // show the select and focus it so user can pick another option
+                hideOtherInput();
+                validSelect.focus();
+                // On some browsers focusing does not open the dropdown. Setting size temporarily helps users see options.
+                try {
+                    validSelect.size = Math.min(8, validSelect.options.length);
+                    setTimeout(function(){ validSelect.size = 0; }, 500);
+                } catch (e) {
+                    // ignore if not supported
+                }
+            });
+        }
+    });
+    </script>
+
     <!-- Visitor List Card -->
     <div class="card" id="list">
         <div class="card-header">
             <h3>📋 Registered Visitors</h3>
             <div class="search-box">
                 <input type="text" id="searchInput" placeholder="🔍 Search by name, contact, or ID..." onkeyup="filterTable()">
-            </div>
+            </div> 
         </div>
     <?php
     // Query all visitors
@@ -203,44 +286,66 @@ if (isset($_GET['delete']) && $conn) {
     if ($result && $result->num_rows > 0) {
         echo "<div class='table-responsive'>";
         echo "<table class='visitor-table' id='visitorTable'>";
-        echo "<thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Full Name</th>
-                  <th>Contact Number</th>
-                  <th>Valid ID Type</th>
-                  <th>No. of Visitors</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>";
+                echo "<thead>
+                                <tr>
+                                    <th style='text-align:center'>ID</th>
+                                    <th style='text-align:center'>Full Name</th>
+                                    <th style='text-align:center'>Contact Number</th>
+                                    <th style='text-align:center'>Valid ID Type</th>
+                                    <th style='text-align:center'>No. of Visitors</th>
+                                    <th style='text-align:center'>Date &amp; Time</th>
+                                    <th style='text-align:center'>Actions</th>
+                                </tr>
+                            </thead>";
         echo "<tbody>";
-        while ($row = $result->fetch_assoc()) {
-            $vid = htmlspecialchars($row['visitor_id']);
-            $vname = htmlspecialchars($row['full_name']);
-            $vcontact = htmlspecialchars($row['contact_number']);
-            $valid = htmlspecialchars($row['valid_id']);
-            $num_visitors = htmlspecialchars($row['number_of_visitors']);
-            $delete_id = urlencode($row['visitor_id']);
-            echo "<tr>
-                    <td><span class='id-badge'>#$vid</span></td>
-                    <td><strong>$vname</strong></td>
-                    <td>$vcontact</td>
-                    <td><span class='id-type-badge'>$valid</span></td>
-                    <td><span class='visitor-count'>$num_visitors</span></td>
-                    <td>
-                      <a href='visitor.php?delete=$delete_id' class='btn-delete' 
-                         onclick=\"return confirm('Are you sure you want to delete $vname?');\">
-                         🗑️ Delete
-                      </a>
-                    </td>
-                  </tr>";
-        }
+                while ($row = $result->fetch_assoc()) {
+                        $vid = htmlspecialchars($row['visitor_id']);
+                        $vname = htmlspecialchars($row['full_name']);
+                        $vcontact = htmlspecialchars($row['contact_number']);
+                        $valid = htmlspecialchars($row['valid_id']);
+                        $num_visitors = htmlspecialchars($row['number_of_visitors']);
+                        $delete_id = urlencode($row['visitor_id']);
+
+                        // format created_at to Philippines time
+                        $created_display = '';
+                        if (!empty($row['created_at'])) {
+                                try {
+                                        $dt = new DateTime($row['created_at']);
+                                        $dt->setTimezone(new DateTimeZone('Asia/Manila'));
+                                        $created_display = $dt->format('n/j/Y') . '<br>' . $dt->format('g:i A');
+                                } catch (Exception $e) {
+                                        $created_display = htmlspecialchars($row['created_at']);
+                                }
+                        }
+
+                        echo "<tr>
+                                        <td><span class='id-badge'>#$vid</span></td>
+                                        <td style='text-align:center'><strong>$vname</strong></td>
+                                        <td style='text-align:center'>$vcontact</td>
+                                        <td style='text-align:center'><span class='id-type-badge'>$valid</span></td>
+                                        <td style='text-align:center'><span class='visitor-count'>$num_visitors</span></td>
+                                        <td style='text-align:center'>$created_display</td>
+                                        <td style='text-align:center'>
+                                            <a href='visitor.php?delete=$delete_id' class='btn-delete' 
+                                                 onclick=\"return confirm('Are you sure you want to delete $vname?');\">
+                                                 🗑️ Delete
+                                            </a>
+                                        </td>
+                                    </tr>";
+                }
         echo "</tbody>";
         echo "</table>";
         echo "</div>";
         
+        // Calculate total visitors including number_of_visitors field
+        $total_result = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor");
+        $total_count = 0;
+        if ($total_result) {
+            $total_count = $total_result->fetch_assoc()['total'];
+        }
+        
         echo "<div class='table-footer'>";
-        echo "<p>Total: <strong>" . $result->num_rows . "</strong> visitor(s) registered</p>";
+        echo "<p>Total: <strong>" . $total_count . "</strong> visitor(s) registered</p>";
         echo "</div>";
     } else {
         echo "<div class='empty-state'>";

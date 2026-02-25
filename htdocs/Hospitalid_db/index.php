@@ -1,5 +1,8 @@
 <?php require_once __DIR__ . '/Includes/database.php'; 
 
+// Set timezone to Philippines
+date_default_timezone_set('Asia/Manila');
+
 // Fetch dashboard statistics
 $stats = [
     'total_visitors' => 0,
@@ -14,6 +17,14 @@ if ($result) {
     $stats['total_visitors'] = $result->fetch_assoc()['total'];
 }
 
+// Count today's visitors (based on Philippines date)
+$today_start = date('Y-m-d 00:00:00', strtotime('-8 hours')); // Start of today in Philippines time, expressed in UTC
+$today_end = date('Y-m-d 23:59:59', strtotime('-8 hours'));   // End of today in Philippines time, expressed in UTC
+$result = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor WHERE created_at >= '$today_start' AND created_at <= '$today_end'");
+if ($result) {
+    $stats['today_visitors'] = $result->fetch_assoc()['total'];
+}
+
 $result = $conn->query("SELECT COUNT(*) as total FROM visit_log");
 if ($result) {
     $stats['total_visits'] = $result->fetch_assoc()['total'];
@@ -22,15 +33,6 @@ if ($result) {
 $result = $conn->query("SELECT COUNT(*) as total FROM visit_log WHERE check_in_time IS NOT NULL AND check_out_time IS NULL");
 if ($result) {
     $stats['active_visits'] = $result->fetch_assoc()['total'];
-}
-
-// Get recent visitors
-$recent_visitors = [];
-$result = $conn->query("SELECT * FROM visitor ORDER BY visitor_id DESC LIMIT 5");
-if ($result) {
-    while ($row = $result->fetch_assoc()) {
-        $recent_visitors[] = $row;
-    }
 }
 }
 ?>
@@ -50,7 +52,8 @@ if ($result) {
         <h1>🏥 Hospital Visitor System</h1>
         <nav class="header-nav">
             <a href="index.php" class="nav-link active">Dashboard</a>
-            <a href="visitor.php" class="nav-link">Visitors</a>
+            <a href="visitor.php" class="nav-link">Add Visitor</a>
+            <a href="all_visitors.php" class="nav-link">All Visitors</a>
         </nav>
     </div>
 </header>
@@ -81,14 +84,6 @@ if ($result) {
                 <div class="kpi-label">Active Visits</div>
             </div>
         </div>
-        
-        <div class="kpi-card">
-            <div class="kpi-icon">📊</div>
-            <div class="kpi-content">
-                <div class="kpi-value"><?php echo $stats['total_visits']; ?></div>
-                <div class="kpi-label">Total Visits</div>
-            </div>
-        </div>
     </div>
 
     <!-- Quick Actions -->
@@ -101,59 +96,21 @@ if ($result) {
                 <div class="action-desc">Register a new visitor</div>
             </a>
             
-            <a href="visitor.php#list" class="action-card">
+            <a href="all_visitors.php" class="action-card">
                 <div class="action-icon">📋</div>
                 <div class="action-title">View All Visitors</div>
                 <div class="action-desc">Browse visitor records</div>
             </a>
             
-            <a href="visitor.php" class="action-card">
+            <a href="all_visitors.php" class="action-card">
                 <div class="action-icon">🔍</div>
                 <div class="action-title">Search Visitor</div>
                 <div class="action-desc">Find visitor by name or ID</div>
             </a>
-            
-            <a href="visitor.php" class="action-card">
-                <div class="action-icon">📈</div>
-                <div class="action-title">View Reports</div>
-                <div class="action-desc">Generate visit reports</div>
-            </a>
         </div>
     </div>
 
-    <!-- Recent Activity -->
-    <div class="recent-activity">
-        <h2>Recent Visitors</h2>
-        <?php if (empty($recent_visitors)): ?>
-            <div class="empty-state">
-                <div class="empty-icon">📭</div>
-                <p>No visitors registered yet</p>
-                <a href="visitor.php" class="btn">Add First Visitor</a>
-            </div>
-        <?php else: ?>
-            <div class="activity-list">
-                <?php foreach ($recent_visitors as $visitor): ?>
-                    <div class="activity-item">
-                        <div class="activity-avatar">👤</div>
-                        <div class="activity-details">
-                            <div class="activity-name"><?php echo htmlspecialchars($visitor['full_name']); ?></div>
-                            <div class="activity-meta">
-                                <?php echo htmlspecialchars($visitor['valid_id']); ?> • 
-                                <?php echo htmlspecialchars($visitor['contact_number']); ?>
-                            </div>
-                        </div>
-                        <div class="activity-badge">
-                            <?php echo htmlspecialchars($visitor['number_of_visitors']); ?> visitor(s)
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-            <div class="view-all">
-                <a href="visitor.php" class="btn secondary">View All Visitors →</a>
-            </div>
-        <?php endif; ?>
     </div>
-</div>
 
 <footer>
     &copy; <?php echo date("Y"); ?> Hospital Visitor System • Dashboard
