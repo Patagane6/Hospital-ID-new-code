@@ -8,6 +8,7 @@ $stats = [
     'total_visitors' => 0,
     'today_visitors' => 0,
     'active_visits' => 0,
+    'inactive_visitors' => 0,
     'total_visits' => 0
 ];
 
@@ -37,6 +38,12 @@ if ($result) {
 $result = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor WHERE status = 'active' OR status IS NULL");
 if ($result) {
     $stats['active_visits'] = $result->fetch_assoc()['total'];
+}
+
+// count inactive visitors
+$result = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor WHERE status = 'inactive'");
+if ($result) {
+    $stats['inactive_visitors'] = $result->fetch_assoc()['total'];
 }
 }
 ?>
@@ -80,11 +87,20 @@ if ($result) {
                 <div class="kpi-label">Active Visitors</div>
             </div>
         </div>
+        
+        <div class="kpi-card">
+            <div class="kpi-icon">🚫</div>
+            <div class="kpi-content">
+                <div class="kpi-value"><?php echo $stats['inactive_visitors']; ?></div>
+                <div class="kpi-label">Inactive Visitors</div>
+            </div>
+        </div>
     </div>
 
     <!-- Quick Actions -->
     <div class="quick-actions">
         <h2>Quick Actions</h2>
+        <p style="color:#546e7a; font-size:0.9rem; margin-bottom:12px;">Use the cards below to add, view or search visitors quickly.</p>
         <div class="action-grid">
             <a href="visitor.php" class="action-card">
                 <div class="action-icon">➕</div>
@@ -125,7 +141,7 @@ if ($result) {
     </div>
 
 <footer>
-    &copy; <?php echo date("Y"); ?> Hospital Visitor System • Dashboard
+    &copy; <?php echo date("Y"); ?> Hospital Visitor System
 </footer>
 
 <script>
