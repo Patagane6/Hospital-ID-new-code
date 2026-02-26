@@ -56,6 +56,8 @@ date_default_timezone_set('Asia/Manila');
                                     <th style='text-align:center'>Valid ID Type</th>
                                     <th style='text-align:center'>No. of Visitors</th>
                                     <th style='text-align:center'>Date &amp; Time</th>
+                                    <th style='text-align:center'>Status</th>
+                                    <th style='text-align:center'>Inactive Date &amp; Time</th>
                                     <th style='text-align:center'>Actions</th>
                                 </tr>
                             </thead>";
@@ -66,7 +68,8 @@ date_default_timezone_set('Asia/Manila');
                         $vcontact = htmlspecialchars($row['contact_number']);
                         $valid = htmlspecialchars($row['valid_id']);
                         $num_visitors = htmlspecialchars($row['number_of_visitors']);
-                        $delete_id = urlencode($row['visitor_id']);
+                        $status = isset($row['status']) ? htmlspecialchars($row['status']) : 'active';
+                        $visitor_id = $row['visitor_id'];
 
                         // format created_at to Philippines time
                         $created_display = '';
@@ -80,18 +83,38 @@ date_default_timezone_set('Asia/Manila');
                                 }
                         }
 
-                        echo "<tr>
+                        // Status icon
+                        $status_icon = ($status === 'active') ? '🟢' : '🔴';
+
+                        // Format inactive_at to Philippines time
+                        $inactive_display = '';
+                        if (!empty($row['inactive_at']) && $status === 'inactive') {
+                                try {
+                                        $dt = new DateTime($row['inactive_at']);
+                                        $dt->setTimezone(new DateTimeZone('Asia/Manila'));
+                                        $inactive_display = $dt->format('n/j/Y') . '<br>' . $dt->format('g:i A');
+                                } catch (Exception $e) {
+                                        $inactive_display = '';
+                                }
+                        }
+
+                        // Action button
+                        $action_button = '';
+                        if ($status === 'active') {
+                            $action_button = "<button type='button' class='btn-inactive' data-id='$visitor_id' style='background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 500;'>Inactive</button>";
+                        }
+
+                        echo "<tr data-visitor-id='$visitor_id'>
                                         <td><span class='id-badge'>#$vid</span></td>
                                         <td style='text-align:center'><strong>$vname</strong></td>
                                         <td style='text-align:center'>$vcontact</td>
                                         <td style='text-align:center'><span class='id-type-badge'>$valid</span></td>
                                         <td style='text-align:center'><span class='visitor-count'>$num_visitors</span></td>
                                         <td style='text-align:center'>$created_display</td>
+                                        <td style='text-align:center'><span class='status-icon' data-status='$status'>$status_icon</span></td>
+                                        <td style='text-align:center'>$inactive_display</td>
                                         <td style='text-align:center'>
-                                            <a href='all_visitors.php?delete=$delete_id' class='btn-delete' 
-                                                 onclick=\"return confirm('Are you sure you want to delete $vname?');\">
-                                                 🗑️ Delete
-                                            </a>
+                                            $action_button
                                         </td>
                                     </tr>";
                 }
@@ -123,31 +146,77 @@ date_default_timezone_set('Asia/Manila');
     </div>
 
     <script>
-    // Real-time table search/filter
-    function filterTable() {
-        const input = document.getElementById('searchInput');
-        const filter = input.value.toUpperCase();
-        const table = document.getElementById('visitorTable');
-        const tr = table.getElementsByTagName('tr');
-
-        for (let i = 1; i < tr.length; i++) {
-            const row = tr[i];
-            let found = false;
-            const td = row.getElementsByTagName('td');
+    // Highlight visitor if URL parameter is present and handle Inactive button
+    document.addEventListener('DOMContentLoaded', function(){
+        const urlParams = new URLSearchParams(window.location.search);
+        const highlightId = urlParams.get('highlight');
+        
+        if (highlightId) {
+            const visitorTable = document.getElementById('visitorTable');
+            const rows = visitorTable.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
             
-            for (let j = 0; j < td.length - 1; j++) { // exclude action column
-                if (td[j]) {
-                    const txtValue = td[j].textContent || td[j].innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        found = true;
-                        break;
-                    }
+            Array.from(rows).forEach(row => {
+                const firstCell = row.getElementsByTagName('td')[0];
+                if (firstCell.textContent.trim() === highlightId) {
+                    row.style.backgroundColor = '#c8e6c9';
+                    row.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.6)';
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    
+                    // Auto-remove highlight after 5 seconds
+                    setTimeout(() => {
+                        row.style.backgroundColor = '';
+                        row.style.boxShadow = '';
+                    }, 5000);
                 }
-            }
-            
-            row.style.display = found ? '' : 'none';
+            });
         }
-    }
+
+        // Handle Inactive button clicks
+        document.addEventListener('click', function(e){
+            if (e.target.classList.contains('btn-inactive')) {
+                const visitorId = e.target.getAttribute('data-id');
+                const row = document.querySelector(`tr[data-visitor-id='${visitorId}']`);
+                
+                // Send AJAX request to update status
+                fetch('update_status.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: 'visitor_id=' + visitorId + '&status=inactive'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update status icon to red
+                        const statusIcon = row.querySelector('.status-icon');
+                        if (statusIcon) {
+                            statusIcon.textContent = '🔴';
+                            statusIcon.setAttribute('data-status', 'inactive');
+                        }
+                        
+                        // Display the inactive date/time in the new column
+                        const inactiveDateCell = row.querySelectorAll('td')[7]; // 8th column (0-indexed)
+                        if (inactiveDateCell && data.inactive_at_display) {
+                            inactiveDateCell.innerHTML = data.inactive_at_display;
+                        }
+                        
+                        // Remove the Inactive button
+                        const actionCell = row.querySelector('td:last-child');
+                        if (actionCell) {
+                            actionCell.innerHTML = '';
+                        }
+                    } else {
+                        alert('Error updating status: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error updating visitor status');
+                });
+            }
+        });
+    });
     </script>
 </div>
 

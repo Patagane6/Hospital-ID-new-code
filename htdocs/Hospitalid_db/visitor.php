@@ -273,9 +273,12 @@ if (isset($_GET['delete']) && $conn) {
     <div class="card" id="list">
         <div class="card-header">
             <h3>📋 Registered Visitors</h3>
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="🔍 Search by name, contact, or ID..." onkeyup="filterTable()">
-            </div> 
+            <div style="position: relative; width: 320px;">
+                <input type="text" id="autocompleteSearch" placeholder="🔍 Search by name, contact, or ID..." 
+                       style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size:14px; box-sizing:border-box;">
+                <ul id="suggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-top: none; list-style: none; margin: 0; padding: 0; max-height: 240px; overflow-y: auto; display: none; z-index: 1000; border-radius: 0 0 8px 8px;">
+                </ul>
+            </div>
         </div>
     <?php
     // Query all visitors
@@ -294,6 +297,8 @@ if (isset($_GET['delete']) && $conn) {
                                     <th style='text-align:center'>Valid ID Type</th>
                                     <th style='text-align:center'>No. of Visitors</th>
                                     <th style='text-align:center'>Date &amp; Time</th>
+                                    <th style='text-align:center'>Status</th>
+                                    <th style='text-align:center'>Inactive Date &amp; Time</th>
                                     <th style='text-align:center'>Actions</th>
                                 </tr>
                             </thead>";
@@ -304,7 +309,8 @@ if (isset($_GET['delete']) && $conn) {
                         $vcontact = htmlspecialchars($row['contact_number']);
                         $valid = htmlspecialchars($row['valid_id']);
                         $num_visitors = htmlspecialchars($row['number_of_visitors']);
-                        $delete_id = urlencode($row['visitor_id']);
+                        $status = isset($row['status']) ? htmlspecialchars($row['status']) : 'active';
+                        $visitor_id = $row['visitor_id'];
 
                         // format created_at to Philippines time
                         $created_display = '';
@@ -318,18 +324,38 @@ if (isset($_GET['delete']) && $conn) {
                                 }
                         }
 
-                        echo "<tr>
+                        // Status icon
+                        $status_icon = ($status === 'active') ? '🟢' : '🔴';
+
+                        // Format inactive_at to Philippines time
+                        $inactive_display = '';
+                        if (!empty($row['inactive_at']) && $status === 'inactive') {
+                                try {
+                                        $dt = new DateTime($row['inactive_at']);
+                                        $dt->setTimezone(new DateTimeZone('Asia/Manila'));
+                                        $inactive_display = $dt->format('n/j/Y') . '<br>' . $dt->format('g:i A');
+                                } catch (Exception $e) {
+                                        $inactive_display = '';
+                                }
+                        }
+
+                        // Action button
+                        $action_button = '';
+                        if ($status === 'active') {
+                            $action_button = "<button type='button' class='btn-inactive' data-id='$visitor_id' style='background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 500;'>Inactive</button>";
+                        }
+
+                        echo "<tr data-visitor-id='$visitor_id'>
                                         <td><span class='id-badge'>#$vid</span></td>
                                         <td style='text-align:center'><strong>$vname</strong></td>
                                         <td style='text-align:center'>$vcontact</td>
                                         <td style='text-align:center'><span class='id-type-badge'>$valid</span></td>
                                         <td style='text-align:center'><span class='visitor-count'>$num_visitors</span></td>
                                         <td style='text-align:center'>$created_display</td>
+                                        <td style='text-align:center'><span class='status-icon' data-status='$status'>$status_icon</span></td>
+                                        <td style='text-align:center'>$inactive_display</td>
                                         <td style='text-align:center'>
-                                            <a href='visitor.php?delete=$delete_id' class='btn-delete' 
-                                                 onclick=\"return confirm('Are you sure you want to delete $vname?');\">
-                                                 🗑️ Delete
-                                            </a>
+                                            $action_button
                                         </td>
                                     </tr>";
                 }
@@ -361,31 +387,163 @@ if (isset($_GET['delete']) && $conn) {
     </div>
 
     <script>
-    // Real-time table search/filter
-    function filterTable() {
-        const input = document.getElementById('searchInput');
-        const filter = input.value.toUpperCase();
-        const table = document.getElementById('visitorTable');
-        const tr = table.getElementsByTagName('tr');
+    // Autocomplete + starts-with filtering and alphabetical ordering (A-Z)
+    document.addEventListener('DOMContentLoaded', function(){
+        const autocompleteInput = document.getElementById('autocompleteSearch');
+        const suggestionsList = document.getElementById('suggestions');
+        const visitorTable = document.getElementById('visitorTable');
+        if (!visitorTable || !autocompleteInput) return;
 
-        for (let i = 1; i < tr.length; i++) {
-            const row = tr[i];
-            let found = false;
-            const td = row.getElementsByTagName('td');
-            
-            for (let j = 0; j < td.length - 1; j++) { // exclude action column
-                if (td[j]) {
-                    const txtValue = td[j].textContent || td[j].innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        found = true;
-                        break;
-                    }
-                }
-            }
-            
-            row.style.display = found ? '' : 'none';
+        const tbody = visitorTable.getElementsByTagName('tbody')[0];
+        // Extract visitor rows and preserve original order
+        let allVisitors = [];
+        let originalOrder = [];
+
+        function extractVisitors() {
+            const rows = Array.from(tbody.children);
+            originalOrder = rows.slice();
+            allVisitors = rows.map(row => {
+                const cells = row.getElementsByTagName('td');
+                return {
+                    id: (cells[0] && cells[0].textContent.trim()) || '',
+                    name: (cells[1] && cells[1].textContent.trim()) || '',
+                    contact: (cells[2] && cells[2].textContent.trim()) || '',
+                    dateTime: (cells[5] && cells[5].textContent.trim()) || '',
+                    row: row
+                };
+            });
         }
-    }
+
+        extractVisitors();
+
+        function restoreOriginalOrder() {
+            originalOrder.forEach(r => tbody.appendChild(r));
+            originalOrder.forEach(r => r.style.display = '');
+        }
+
+        autocompleteInput.addEventListener('input', function(){
+            const query = this.value.toLowerCase().trim();
+            suggestionsList.innerHTML = '';
+
+            if (!query) {
+                // show full table in original order
+                restoreOriginalOrder();
+                suggestionsList.style.display = 'none';
+                return;
+            }
+
+            // Match by name, contact, ID, or date that start with the query (case-insensitive)
+            const matches = allVisitors.filter(visitor =>
+                visitor.name.toLowerCase().startsWith(query) ||
+                visitor.contact.toLowerCase().startsWith(query) ||
+                visitor.id.toLowerCase().startsWith(query) ||
+                visitor.dateTime.toLowerCase().startsWith(query)
+            );
+
+            if (matches.length === 0) {
+                // hide all rows when no matches
+                allVisitors.forEach(v => v.row.style.display = 'none');
+                suggestionsList.style.display = 'none';
+                return;
+            }
+
+            // Sort matches alphabetically by name
+            matches.sort((a, b) => a.name.localeCompare(b.name));
+
+            // Reorder table body to show matched rows in sorted order
+            matches.forEach(m => tbody.appendChild(m.row));
+            // Hide non-matching rows
+            allVisitors.forEach(v => {
+                if (!matches.includes(v)) v.row.style.display = 'none';
+                else v.row.style.display = '';
+            });
+
+            // Build suggestions (up to 8)
+            matches.slice(0, 8).forEach(visitor => {
+                const li = document.createElement('li');
+                li.style.cssText = 'padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #eee;';
+                li.textContent = visitor.name + ' • ' + visitor.contact + ' • ' + visitor.dateTime;
+
+                li.addEventListener('mouseover', function(){ this.style.backgroundColor = '#f5f5f5'; });
+                li.addEventListener('mouseout', function(){ this.style.backgroundColor = ''; });
+
+                li.addEventListener('click', function(){
+                    // highlight and scroll to the selected row
+                    document.querySelectorAll('#visitorTable tbody tr').forEach(r => {
+                        r.style.backgroundColor = '';
+                        r.style.boxShadow = '';
+                    });
+
+                    visitor.row.style.backgroundColor = '#c8e6c9';
+                    visitor.row.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.6)';
+                    visitor.row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                    // Auto-remove highlight after 5 seconds
+                    setTimeout(() => {
+                        visitor.row.style.backgroundColor = '';
+                        visitor.row.style.boxShadow = '';
+                    }, 5000);
+                });
+
+                suggestionsList.appendChild(li);
+            });
+
+            suggestionsList.style.display = 'block';
+        });
+
+        // Hide suggestions when clicking outside
+        document.addEventListener('click', function(e){
+            if (e.target !== autocompleteInput && !suggestionsList.contains(e.target)) {
+                suggestionsList.style.display = 'none';
+            }
+        });
+
+        // Handle Inactive button clicks
+        document.addEventListener('click', function(e){
+            if (e.target.classList.contains('btn-inactive')) {
+                const visitorId = e.target.getAttribute('data-id');
+                const row = document.querySelector(`tr[data-visitor-id='${visitorId}']`);
+                
+                // Send AJAX request to update status
+                fetch('update_status.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: 'visitor_id=' + visitorId + '&status=inactive'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update status icon to red
+                        const statusIcon = row.querySelector('.status-icon');
+                        if (statusIcon) {
+                            statusIcon.textContent = '🔴';
+                            statusIcon.setAttribute('data-status', 'inactive');
+                        }
+                        
+                        // Display the inactive date/time in the new column
+                        const inactiveDateCell = row.querySelectorAll('td')[7]; // 8th column (0-indexed)
+                        if (inactiveDateCell && data.inactive_at_display) {
+                            inactiveDateCell.innerHTML = data.inactive_at_display;
+                        }
+                        
+                        // Remove the Inactive button
+                        const actionCell = row.querySelector('td:last-child');
+                        if (actionCell) {
+                            actionCell.innerHTML = '';
+                        }
+                    } else {
+                        alert('Error updating status: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error updating visitor status');
+                });
+            }
+        });
+    });
     </script>
 </div>
 
