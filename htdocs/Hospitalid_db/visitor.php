@@ -2,6 +2,33 @@
 
 // Set timezone to Philippines
 date_default_timezone_set('Asia/Manila');
+
+// --- date range filter defaults ---
+$start_date = $_GET['start_date'] ?? '';
+$end_date   = $_GET['end_date'] ?? '';
+
+if ($start_date !== '') {
+    $start_date = date('Y-m-d', strtotime($start_date));
+}
+if ($end_date !== '') {
+    $end_date = date('Y-m-d', strtotime($end_date));
+}
+
+if ($start_date === '' && $end_date === '') {
+    // no filter supplied: show today
+    $start_date = $end_date = date('Y-m-d');
+} elseif ($start_date === '') {
+    $start_date = $end_date;
+} elseif ($end_date === '') {
+    $end_date = $start_date;
+}
+
+// convert to UTC boundaries (Philippines = UTC+8)
+$sd_utc = date('Y-m-d H:i:s', strtotime("$start_date 00:00:00") - 8*3600);
+$ed_utc = date('Y-m-d H:i:s', strtotime("$end_date 23:59:59") - 8*3600);
+
+$whereClause = " WHERE created_at >= '$sd_utc' AND created_at <= '$ed_utc'";
+
 ?>
 
 <?php
@@ -55,8 +82,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_visitor']) && $co
         $stmt->bind_param("sssi", $full_name, $contact_number, $valid_id, $number_of_visitors);
         
         if ($stmt->execute()) {
+            $new_id = $conn->insert_id;
             $stmt->close();
-            header('Location: visitor.php?added=1');
+            $today = date('Y-m-d');
+            header("Location: all_visitors.php?start_date=$today&end_date=$today&highlight=$new_id&added=1");
             exit;
         } else {
             $add_error = $stmt->error;
@@ -71,7 +100,15 @@ if (isset($_GET['delete']) && $conn) {
     if ($id > 0) {
         $conn->query("DELETE FROM visitor WHERE visitor_id = $id");
     }
-    header('Location: visitor.php?deleted=1');
+    // rebuild query string to keep date range if provided
+    $qs = 'deleted=1';
+    if (isset($_GET['start_date'])) {
+        $qs .= '&start_date=' . urlencode($_GET['start_date']);
+    }
+    if (isset($_GET['end_date'])) {
+        $qs .= '&end_date=' . urlencode($_GET['end_date']);
+    }
+    header("Location: visitor.php?$qs");
     exit;
 }
 ?>
@@ -273,6 +310,18 @@ if (isset($_GET['delete']) && $conn) {
     <div class="card" id="list">
         <div class="card-header">
             <h3>📋 Registered Visitors</h3>
+            <form method="GET" class="date-range-form">
+                <label>From&nbsp;<input type="date" name="start_date" value="<?php echo htmlspecialchars($start_date); ?>"></label>
+                <label>To&nbsp;<input type="date" name="end_date" value="<?php echo htmlspecialchars($end_date); ?>"></label>
+                <button type="submit" class="btn">Apply</button>
+                <?php if(isset($_GET['start_date']) || isset($_GET['end_date'])): ?>
+                    <a href="visitor.php" class="btn secondary">Reset</a>
+                <?php endif; ?>
+                <?php if(isset($_GET['highlight'])): ?>
+                    <input type="hidden" name="highlight" value="<?php echo htmlspecialchars($_GET['highlight']); ?>">
+                <?php endif; ?>
+            </form>
+            <div class="range-info">Showing visitors from <strong><?php echo htmlspecialchars($start_date); ?></strong> to <strong><?php echo htmlspecialchars($end_date); ?></strong>.</div>
             <div style="position: relative; width: 320px;">
                 <input type="text" id="autocompleteSearch" placeholder="🔍 Search by name, contact, or ID..." 
                        style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size:14px; box-sizing:border-box;">
@@ -281,9 +330,9 @@ if (isset($_GET['delete']) && $conn) {
             </div>
         </div>
     <?php
-    // Query all visitors
+    // Query all visitors (apply date filter)
     if ($conn) {
-    $sql = "SELECT * FROM visitor ORDER BY visitor_id DESC";
+    $sql = "SELECT * FROM visitor" . $whereClause . " ORDER BY visitor_id DESC";
     $result = $conn->query($sql);
 
     if ($result && $result->num_rows > 0) {
@@ -363,8 +412,8 @@ if (isset($_GET['delete']) && $conn) {
         echo "</table>";
         echo "</div>";
         
-        // Calculate total visitors including number_of_visitors field
-        $total_result = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor");
+        // Calculate total visitors including number_of_visitors field (same filter)
+        $total_result = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor" . $whereClause);
         $total_count = 0;
         if ($total_result) {
             $total_count = $total_result->fetch_assoc()['total'];
@@ -376,8 +425,9 @@ if (isset($_GET['delete']) && $conn) {
     } else {
         echo "<div class='empty-state'>";
         echo "<div class='empty-icon'>📭</div>";
-        echo "<p>No visitors registered yet</p>";
-        echo "<p class='empty-hint'>Add your first visitor using the form above</p>";
+        // if filter is active (always true now) show range message
+        echo "<p>No visitors found for the selected date range ({$start_date} to {$end_date}).</p>";
+        echo "<p class='empty-hint'>Try another range or add a new visitor</p>";
         echo "</div>";
     }
 
@@ -395,6 +445,25 @@ if (isset($_GET['delete']) && $conn) {
         if (!visitorTable || !autocompleteInput) return;
 
         const tbody = visitorTable.getElementsByTagName('tbody')[0];
+        // highlight via URL parameter (same logic as all_visitors)
+        const params = new URLSearchParams(window.location.search);
+        let highlightId = params.get('highlight') || '';
+        if (highlightId.startsWith('#')) highlightId = highlightId.slice(1);
+        if (highlightId) {
+            Array.from(tbody.getElementsByTagName('tr')).forEach(row => {
+                const firstCell = row.getElementsByTagName('td')[0];
+                const cellId = firstCell ? firstCell.textContent.trim().replace(/^#/, '') : '';
+                if (cellId === highlightId) {
+                    row.style.backgroundColor = '#c8e6c9';
+                    row.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.6)';
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(() => {
+                        row.style.backgroundColor = '';
+                        row.style.boxShadow = '';
+                    }, 5000);
+                }
+            });
+        }
         // Extract visitor rows and preserve original order
         let allVisitors = [];
         let originalOrder = [];

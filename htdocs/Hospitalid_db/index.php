@@ -79,6 +79,14 @@ if ($result) {
                 <div class="kpi-label">Total Visitors</div>
             </div>
         </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon">📅</div>
+            <div class="kpi-content">
+                <div class="kpi-value"><?php echo $stats['today_visitors']; ?></div>
+                <div class="kpi-label">Today Visitors</div>
+            </div>
+        </div>
         
         <div class="kpi-card">
             <div class="kpi-icon">✅</div>
@@ -220,8 +228,18 @@ if ($result) {
                 li.textContent = visitor.name + ' • ' + visitor.contact + ' • ' + visitor.dateTime;
             
             li.addEventListener('click', function(){
-                // Navigate to all_visitors page with highlight parameter
-                window.location.href = 'all_visitors.php?highlight=' + visitor.id;
+                // compute Y-m-d from visitor.dateTime (format n/j/Y g:i A)
+                let rawDate = visitor.dateTime.split(' ')[0]; // e.g. "3/1/2026"
+                let parts = rawDate.split('/');
+                if (parts.length === 3) {
+                    let m = parts[0].padStart(2,'0');
+                    let d = parts[1].padStart(2,'0');
+                    let y = parts[2];
+                    let dateParam = `${y}-${m}-${d}`;
+                    window.location.href = `all_visitors.php?highlight=${visitor.id}&start_date=${dateParam}&end_date=${dateParam}`;
+                } else {
+                    window.location.href = 'all_visitors.php?highlight=' + visitor.id;
+                }
             });
 
             dashboardSuggestions.appendChild(li);

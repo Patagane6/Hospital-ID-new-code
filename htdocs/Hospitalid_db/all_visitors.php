@@ -2,6 +2,43 @@
 
 // Set timezone to Philippines
 date_default_timezone_set('Asia/Manila');
+
+// --- date range filter defaults ---
+$start_date = $_GET['start_date'] ?? '';
+$end_date   = $_GET['end_date'] ?? '';
+
+if ($start_date !== '') {
+    $start_date = date('Y-m-d', strtotime($start_date));
+}
+if ($end_date !== '') {
+    $end_date = date('Y-m-d', strtotime($end_date));
+}
+
+if ($start_date === '' && $end_date === '') {
+    $start_date = $end_date = date('Y-m-d');
+} elseif ($start_date === '') {
+    $start_date = $end_date;
+} elseif ($end_date === '') {
+    $end_date = $start_date;
+}
+
+$sd_utc = date('Y-m-d H:i:s', strtotime("$start_date 00:00:00") - 8*3600);
+$ed_utc = date('Y-m-d H:i:s', strtotime("$end_date 23:59:59") - 8*3600);
+$whereClause = " WHERE created_at >= '$sd_utc' AND created_at <= '$ed_utc'";
+
+// pre-calc counts so we can show them above the table later
+$active_count = 0;
+$inactive_count = 0;
+$total_count = 0;
+if ($conn) {
+    $r = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor{$whereClause}");
+    if ($r) { $total_count = $r->fetch_assoc()['total'] ?? 0; }
+    $r = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor{$whereClause} AND (status='active' OR status IS NULL)");
+    if ($r) { $active_count = $r->fetch_assoc()['total'] ?? 0; }
+    $r = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor{$whereClause} AND status='inactive'");
+    if ($r) { $inactive_count = $r->fetch_assoc()['total'] ?? 0; }
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -26,6 +63,12 @@ date_default_timezone_set('Asia/Manila');
 </header>
 
 <div class="container">
+    <?php
+    // show flash when redirected after add
+    if (isset($_GET['added']) && $_GET['added'] == '1') {
+        echo "<div id='flash-msg' class='alert alert-success'>✅ New visitor added successfully!</div>";
+    }
+    ?>
     <div class="page-header">
         <h2>📋 All Visitors</h2>
         <p>View all registered visitors</p>
@@ -35,14 +78,58 @@ date_default_timezone_set('Asia/Manila');
     <div class="card" id="list">
         <div class="card-header">
             <h3>📋 Registered Visitors</h3>
+            <form method="GET" class="date-range-form">
+                <label>From&nbsp;<input type="date" name="start_date" value="<?php echo htmlspecialchars($start_date); ?>"></label>
+                <label>To&nbsp;<input type="date" name="end_date" value="<?php echo htmlspecialchars($end_date); ?>"></label>
+                <button type="submit" class="btn">Apply</button>
+                <?php if(isset($_GET['highlight'])): ?>
+                    <input type="hidden" name="highlight" value="<?php echo htmlspecialchars($_GET['highlight']); ?>">
+                <?php endif; ?>
+                <a href="all_visitors.php" class="btn secondary">Reset</a>
+            </form>
+            <div class="range-stats">
+                <div class="stat-card">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-value"><?php echo $total_count; ?></div>
+                    <div class="stat-label">Total</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-value"><?php echo $active_count; ?></div>
+                    <div class="stat-label">Active</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">🚫</div>
+                    <div class="stat-value"><?php echo $inactive_count; ?></div>
+                    <div class="stat-label">Inactive</div>
+                </div>
+            </div>
+            <div class="range-info">Showing visitors from <strong><?php echo htmlspecialchars($start_date); ?></strong> to <strong><?php echo htmlspecialchars($end_date); ?></strong>.</div>
             <div class="search-box">
                 <input type="text" id="searchInput" placeholder="🔍 Search by name, contact, or ID..." onkeyup="filterTable()">
             </div> 
         </div>
     <?php
-    // Query all visitors
+    // hide success message after a few seconds (same behaviour as visitor.php)
+    ?>
+    <script>
+    setTimeout(function(){
+        var el = document.getElementById('flash-msg');
+        if (el) {
+            el.style.transition = 'opacity 0.5s';
+            el.style.opacity = '0';
+            setTimeout(function(){ el.remove(); }, 500);
+        }
+        if (window.history && window.history.replaceState) {
+            var url = window.location.protocol + '//' + window.location.host + window.location.pathname;
+            window.history.replaceState({}, document.title, url);
+        }
+    }, 3000);
+    </script>
+    <?php
+    // Query all visitors (apply date filter)
     if ($conn) {
-    $sql = "SELECT * FROM visitor ORDER BY visitor_id DESC";
+    $sql = "SELECT * FROM visitor" . $whereClause . " ORDER BY visitor_id DESC";
     $result = $conn->query($sql);
 
     if ($result && $result->num_rows > 0) {
@@ -122,21 +209,15 @@ date_default_timezone_set('Asia/Manila');
         echo "</table>";
         echo "</div>";
         
-        // Calculate total visitors including number_of_visitors field
-        $total_result = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor");
-        $total_count = 0;
-        if ($total_result) {
-            $total_count = $total_result->fetch_assoc()['total'];
-        }
-        
+        // total_count was already calculated before rendering the table
         echo "<div class='table-footer'>";
         echo "<p>Total: <strong>" . $total_count . "</strong> visitor(s) registered</p>";
         echo "</div>";
     } else {
         echo "<div class='empty-state'>";
         echo "<div class='empty-icon'>📭</div>";
-        echo "<p>No visitors registered yet</p>";
-        echo "<p class='empty-hint'>Go to Visitors page to add your first visitor</p>";
+        echo "<p>No visitors found for the selected date range ({$start_date} to {$end_date}).</p>";
+        echo "<p class='empty-hint'>Go to Visitors page to add a new visitor</p>";
         echo "</div>";
     }
 
@@ -149,7 +230,11 @@ date_default_timezone_set('Asia/Manila');
     // Highlight visitor if URL parameter is present and handle Inactive button
     document.addEventListener('DOMContentLoaded', function(){
         const urlParams = new URLSearchParams(window.location.search);
-        const highlightId = urlParams.get('highlight');
+        let highlightId = urlParams.get('highlight') || '';
+        // normalise: strip leading # if present
+        if (highlightId.startsWith('#')) {
+            highlightId = highlightId.slice(1);
+        }
         
         if (highlightId) {
             const visitorTable = document.getElementById('visitorTable');
@@ -157,7 +242,8 @@ date_default_timezone_set('Asia/Manila');
             
             Array.from(rows).forEach(row => {
                 const firstCell = row.getElementsByTagName('td')[0];
-                if (firstCell.textContent.trim() === highlightId) {
+                const cellId = firstCell ? firstCell.textContent.trim().replace(/^#/, '') : '';
+                if (cellId === highlightId) {
                     row.style.backgroundColor = '#c8e6c9';
                     row.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.6)';
                     row.scrollIntoView({ behavior: 'smooth', block: 'center' });

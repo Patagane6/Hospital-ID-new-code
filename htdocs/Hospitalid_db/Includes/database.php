@@ -65,3 +65,22 @@
         throw new RuntimeException('Could not select database ' . $database_name . ' - ' . mysqli_error($conn));
     }
 
+    // Auto-migrate: Add status column if it doesn't exist
+    try {
+        $result = mysqli_query($conn, "SHOW COLUMNS FROM visitor LIKE 'status'");
+        if ($result && mysqli_num_rows($result) === 0) {
+            mysqli_query($conn, "ALTER TABLE visitor ADD COLUMN status VARCHAR(10) DEFAULT 'active' AFTER created_at");
+        }
+    } catch (Throwable $e) {
+        // Silently ignore if migration fails (may not be critical)
+    }
+
+    // Auto-migrate: Add inactive_at column if it doesn't exist
+    try {
+        $result = mysqli_query($conn, "SHOW COLUMNS FROM visitor LIKE 'inactive_at'");
+        if ($result && mysqli_num_rows($result) === 0) {
+            mysqli_query($conn, "ALTER TABLE visitor ADD COLUMN inactive_at TIMESTAMP NULL AFTER status");
+        }
+    } catch (Throwable $e) {
+        // Silently ignore if migration fails (may not be critical)
+    }
