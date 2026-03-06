@@ -42,22 +42,22 @@
             die('Failed to create database ' . $database_name . ' - ' . $e->getMessage());
         }
 
-        // import schema if SQL file exists
-        $sql_file = __DIR__ . '/../hospitalid_db.sql';
-        if (file_exists($sql_file) && is_readable($sql_file)) {
-            $sql_contents = file_get_contents($sql_file);
-            if ($sql_contents !== false && trim($sql_contents) !== '') {
-                // select the new database then run the multi-query
-                mysqli_select_db($conn, $database_name);
-                if (!mysqli_multi_query($conn, $sql_contents)) {
-                    // collect the error
-                    $err = mysqli_error($conn);
-                    die('Failed to import database schema: ' . $err);
-                }
-                // ensure all results are consumed
-                do { if ($res = mysqli_store_result($conn)) { mysqli_free_result($res); } } while (mysqli_more_results($conn) && mysqli_next_result($conn));
-            }
-        }
+        // // import schema if SQL file exists
+        // $sql_file = __DIR__ . '/../hospitalid_db.sql';
+        // if (file_exists($sql_file) && is_readable($sql_file)) {
+        //     $sql_contents = file_get_contents($sql_file);
+        //     if ($sql_contents !== false && trim($sql_contents) !== '') {
+        //         // select the new database then run the multi-query
+        //         mysqli_select_db($conn, $database_name);
+        //         if (!mysqli_multi_query($conn, $sql_contents)) {
+        //             // collect the error
+        //             $err = mysqli_error($conn);
+        //             die('Failed to import database schema: ' . $err);
+        //         }
+        //         // ensure all results are consumed
+        //         do { if ($res = mysqli_store_result($conn)) { mysqli_free_result($res); } } while (mysqli_more_results($conn) && mysqli_next_result($conn));
+        //     }
+        // }
     }
 
     // finally select the database for normal use
