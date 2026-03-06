@@ -15,7 +15,28 @@ if ($end_date !== '') {
 }
 
 if ($start_date === '' && $end_date === '') {
-    $start_date = $end_date = date('Y-m-d');
+    // no dates supplied – default From to earliest visitor, To to today
+    $earliest = '';
+    if ($conn) {
+        $r = $conn->query("SELECT MIN(created_at) AS earliest FROM visitor");
+        if ($r) {
+            $row = $r->fetch_assoc();
+            $earliest = $row['earliest'] ?? '';
+        }
+    }
+    if (!empty($earliest)) {
+        try {
+            $dt = new DateTime($earliest);
+            $dt->setTimezone(new DateTimeZone('Asia/Manila'));
+            $start_date = $dt->format('Y-m-d');
+        } catch (Exception $e) {
+            $start_date = date('Y-m-d');
+        }
+    } else {
+        $start_date = date('Y-m-d');
+    }
+    // always use today for the end date
+    $end_date = date('Y-m-d');
 } elseif ($start_date === '') {
     $start_date = $end_date;
 } elseif ($end_date === '') {
@@ -78,35 +99,38 @@ if ($conn) {
     <div class="card" id="list">
         <div class="card-header">
             <h3>📋 Registered Visitors</h3>
-            <form method="GET" class="date-range-form">
-                <label>From&nbsp;<input type="date" name="start_date" value="<?php echo htmlspecialchars($start_date); ?>"></label>
-                <label>To&nbsp;<input type="date" name="end_date" value="<?php echo htmlspecialchars($end_date); ?>"></label>
-                <button type="submit" class="btn">Apply</button>
+            <form method="GET" class="date-range-form" aria-label="Filter visitors by date range">
+                <label><span class="cal-icon">📅</span> From&nbsp;<input type="date" name="start_date" aria-label="Start date" value="<?php echo htmlspecialchars($start_date); ?>"></label>
+                <label><span class="cal-icon">📅</span> To&nbsp;<input type="date" name="end_date" aria-label="End date" value="<?php echo htmlspecialchars($end_date); ?>"></label>
+                <button type="submit" class="btn" title="Apply date range">Apply</button>
                 <?php if(isset($_GET['highlight'])): ?>
                     <input type="hidden" name="highlight" value="<?php echo htmlspecialchars($_GET['highlight']); ?>">
                 <?php endif; ?>
-                <a href="all_visitors.php" class="btn secondary">Reset</a>
+                <a href="all_visitors.php" class="btn secondary" title="Clear filters">Reset</a>
             </form>
+            <div class="range-summary-title">Summary for selected dates</div>
             <div class="range-stats">
-                <div class="stat-card">
+                <div class="stat-card visitors">
                     <div class="stat-icon">👥</div>
                     <div class="stat-value"><?php echo $total_count; ?></div>
-                    <div class="stat-label">Total</div>
+                    <div class="stat-label">Visitors</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card checked-in">
                     <div class="stat-icon">✅</div>
                     <div class="stat-value"><?php echo $active_count; ?></div>
-                    <div class="stat-label">Active</div>
+                    <div class="stat-label">Checked In</div>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card inactive">
                     <div class="stat-icon">🚫</div>
                     <div class="stat-value"><?php echo $inactive_count; ?></div>
-                    <div class="stat-label">Inactive</div>
+                    <div class="stat-label">Checked Out</div>
                 </div>
             </div>
             <div class="range-info">Showing visitors from <strong><?php echo htmlspecialchars($start_date); ?></strong> to <strong><?php echo htmlspecialchars($end_date); ?></strong>.</div>
-            <div class="search-box">
+            <div style="position: relative;">
                 <input type="text" id="searchInput" placeholder="🔍 Search by name, contact, or ID..." onkeyup="filterTable()">
+                <ul id="searchSuggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-top: none; list-style: none; margin: 0; padding: 0; max-height: 300px; overflow-y: auto; display: none; z-index: 1000; border-radius: 0 0 8px 8px;">
+                </ul>
             </div> 
         </div>
     <?php
@@ -142,9 +166,9 @@ if ($conn) {
                                     <th style='text-align:center'>Contact Number</th>
                                     <th style='text-align:center'>Valid ID Type</th>
                                     <th style='text-align:center'>No. of Visitors</th>
-                                    <th style='text-align:center'>Date &amp; Time</th>
+                                    <th style='text-align:center'>Checked In</th>
                                     <th style='text-align:center'>Status</th>
-                                    <th style='text-align:center'>Inactive Date &amp; Time</th>
+                                    <th style='text-align:center'>Checked Out</th>
                                     <th style='text-align:center'>Actions</th>
                                 </tr>
                             </thead>";
@@ -188,7 +212,7 @@ if ($conn) {
                         // Action button
                         $action_button = '';
                         if ($status === 'active') {
-                            $action_button = "<button type='button' class='btn-inactive' data-id='$visitor_id' style='background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 500;'>Inactive</button>";
+                            $action_button = "<button type='button' class='btn-inactive' data-id='$visitor_id' style='background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 500;'>Check Out</button>";
                         }
 
                         echo "<tr data-visitor-id='$visitor_id'>
@@ -302,6 +326,98 @@ if ($conn) {
                 });
             }
         });
+    });
+
+    // Dropdown search functionality - show all visitors on focus
+    let allVisitorsCache = [];
+    const searchInput = document.getElementById('searchInput');
+    const searchSuggestions = document.getElementById('searchSuggestions');
+
+    function populateAllVisitors() {
+        if (allVisitorsCache.length > 0) return;
+
+        const visitorTable = document.getElementById('visitorTable');
+        if (!visitorTable) return;
+        
+        const tbody = visitorTable.getElementsByTagName('tbody')[0];
+        const rows = tbody.getElementsByTagName('tr');
+        
+        Array.from(rows).forEach(row => {
+            const cells = row.getElementsByTagName('td');
+            if (cells.length >= 2) {
+                allVisitorsCache.push({
+                    id: cells[0].textContent.trim().replace(/^#/, ''),
+                    name: cells[1].textContent.trim(),
+                    contact: cells[2].textContent.trim(),
+                    dateTime: cells[5].textContent.trim(),
+                    row: row
+                });
+            }
+        });
+    }
+
+    searchInput.addEventListener('focus', function(){
+        populateAllVisitors();
+        displaySuggestions(allVisitorsCache);
+    });
+
+    function displaySuggestions(visitors) {
+        searchSuggestions.innerHTML = '';
+        const sorted = [...visitors].sort((a, b) => a.name.localeCompare(b.name));
+        
+        sorted.forEach(visitor => {
+            const li = document.createElement('li');
+            li.style.cssText = 'padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #eee; transition: background-color 0.2s;';
+            li.onmouseover = function() { this.style.backgroundColor = '#f5f5f5'; };
+            li.onmouseout = function() { this.style.backgroundColor = 'white'; };
+            li.textContent = visitor.name + ' • ' + visitor.contact + ' • ' + visitor.dateTime;
+            
+            li.addEventListener('click', function(){
+                searchInput.value = visitor.name;
+                filterTable();
+                searchSuggestions.innerHTML = '';
+                searchSuggestions.style.display = 'none';
+            });
+            
+            searchSuggestions.appendChild(li);
+        });
+        
+        if (sorted.length > 0) {
+            searchSuggestions.style.display = 'block';
+        }
+    }
+
+    function filterTable() {
+        const query = searchInput.value.toLowerCase().trim();
+        populateAllVisitors();
+        const visitorTable = document.getElementById('visitorTable');
+        const tbody = visitorTable.getElementsByTagName('tbody')[0];
+        
+        if (!query) {
+            displaySuggestions(allVisitorsCache);
+            Array.from(tbody.getElementsByTagName('tr')).forEach(row => row.style.display = '');
+            return;
+        }
+
+        const matches = allVisitorsCache.filter(visitor =>
+            visitor.name.toLowerCase().includes(query) ||
+            visitor.contact.toLowerCase().includes(query) ||
+            visitor.id.toLowerCase().includes(query) ||
+            visitor.dateTime.toLowerCase().includes(query)
+        );
+
+        displaySuggestions(matches);
+        
+        Array.from(tbody.getElementsByTagName('tr')).forEach(row => {
+            row.style.display = matches.some(m => m.row === row) ? '' : 'none';
+        });
+    }
+
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(e){
+        if (e.target !== searchInput && !searchSuggestions.contains(e.target)) {
+            searchSuggestions.style.display = 'none';
+        }
     });
     </script>
 </div>

@@ -7,8 +7,8 @@ date_default_timezone_set('Asia/Manila');
 $stats = [
     'total_visitors' => 0,
     'today_visitors' => 0,
-    'active_visits' => 0,
-    'inactive_visitors' => 0,
+    'checked_in_visits' => 0,    // previously called active_visits
+    'incomplete_visits' => 0,  // previously inactive_visitors
     'total_visits' => 0
 ];
 
@@ -37,13 +37,14 @@ if ($result) {
 
 $result = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor WHERE status = 'active' OR status IS NULL");
 if ($result) {
-    $stats['active_visits'] = $result->fetch_assoc()['total'];
-}
+    $stats['checked_in_visits'] = $result->fetch_assoc()['total'];
+} // visitors whose status is checked in 
 
-// count inactive visitors
+
+// count visitors marked as checked out
 $result = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor WHERE status = 'inactive'");
 if ($result) {
-    $stats['inactive_visitors'] = $result->fetch_assoc()['total'];
+    $stats['incomplete_visits'] = $result->fetch_assoc()['total'];
 }
 }
 ?>
@@ -80,27 +81,27 @@ if ($result) {
             </div>
         </div>
 
-        <div class="kpi-card">
+        <div class="kpi-card today">
             <div class="kpi-icon">📅</div>
             <div class="kpi-content">
                 <div class="kpi-value"><?php echo $stats['today_visitors']; ?></div>
-                <div class="kpi-label">Today Visitors</div>
+                <div class="kpi-label">Today Visitors <span class="kpi-subtext"><?php echo date('F j, Y'); ?></span></div>
             </div>
         </div>
         
         <div class="kpi-card">
             <div class="kpi-icon">✅</div>
             <div class="kpi-content">
-                <div class="kpi-value"><?php echo $stats['active_visits']; ?></div>
-                <div class="kpi-label">Active Visitors</div>
+                <div class="kpi-value"><?php echo $stats['checked_in_visits']; ?></div>
+                <div class="kpi-label">Checked In</div>
             </div>
         </div>
         
         <div class="kpi-card">
             <div class="kpi-icon">🚫</div>
             <div class="kpi-content">
-                <div class="kpi-value"><?php echo $stats['inactive_visitors']; ?></div>
-                <div class="kpi-label">Inactive Visitors</div>
+                <div class="kpi-value"><?php echo $stats['incomplete_visits']; ?></div>
+                <div class="kpi-label">Checked Out</div>
             </div>
         </div>
     </div>
@@ -196,22 +197,59 @@ if ($result) {
             .catch(error => console.error('Error fetching visitors:', error));
     }
 
+    // Show all visitors when search input gets focus
+    dashboardSearch.addEventListener('focus', function(){
+        if (allVisitors.length === 0) return;
+        
+        dashboardSuggestions.innerHTML = '';
+        
+        // Sort all visitors alphabetically by name
+        const sorted = [...allVisitors].sort((a, b) => a.name.localeCompare(b.name));
+        
+        sorted.forEach(visitor => {
+            const li = document.createElement('li');
+            li.style.cssText = 'padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #eee; transition: background-color 0.2s;';
+            li.onmouseover = function() { this.style.backgroundColor = '#f5f5f5'; };
+            li.onmouseout = function() { this.style.backgroundColor = 'white'; };
+            li.textContent = visitor.name + ' • ' + visitor.contact + ' • ' + visitor.dateTime;
+            
+            li.addEventListener('click', function(){
+                // compute Y-m-d from visitor.dateTime (format n/j/Y g:i A)
+                let rawDate = visitor.dateTime.split(' ')[0];
+                let parts = rawDate.split('/');
+                if (parts.length === 3) {
+                    let m = parts[0].padStart(2,'0');
+                    let d = parts[1].padStart(2,'0');
+                    let y = parts[2];
+                    let dateParam = `${y}-${m}-${d}`;
+                    window.location.href = `all_visitors.php?highlight=${visitor.id}&start_date=${dateParam}&end_date=${dateParam}`;
+                } else {
+                    window.location.href = 'all_visitors.php?highlight=' + visitor.id;
+                }
+            });
+            
+            dashboardSuggestions.appendChild(li);
+        });
+        
+        dashboardSuggestions.style.display = 'block';
+    });
+
     // Autocomplete search
     dashboardSearch.addEventListener('input', function(){
         const query = this.value.toLowerCase().trim();
         dashboardSuggestions.innerHTML = '';
 
         if (!query) {
-            dashboardSuggestions.style.display = 'none';
+            this.dispatchEvent(new Event('focus'));
             return;
         }
 
-        // Match visitors by name, contact, ID, or date that start with the typed query (case-insensitive)
+        // Match visitors by name, contact, ID, or date (case-insensitive)
         const matches = allVisitors.filter(visitor => 
-            visitor.name.toLowerCase().startsWith(query) ||
-            visitor.contact.toLowerCase().startsWith(query) ||
-            visitor.id.toLowerCase().startsWith(query) ||
-            visitor.dateTime.toLowerCase().startsWith(query)
+            visitor.name.toLowerCase().includes(query) ||
+            visitor.contact.toLowerCase().includes(query) ||
+            visitor.id.toLowerCase().includes(query) ||
+            visitor.dateTime.toLowerCase().includes(query)
         );
 
         if (matches.length === 0) {
@@ -219,17 +257,19 @@ if ($result) {
             return;
         }
 
-            // Sort matches alphabetically by visitor name (A-Z)
-            matches.sort((a, b) => a.name.localeCompare(b.name));
+        // Sort matches alphabetically by visitor name (A-Z)
+        matches.sort((a, b) => a.name.localeCompare(b.name));
 
         matches.slice(0, 8).forEach(visitor => {
             const li = document.createElement('li');
-            li.style.cssText = 'padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #eee;';
-                li.textContent = visitor.name + ' • ' + visitor.contact + ' • ' + visitor.dateTime;
+            li.style.cssText = 'padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #eee; transition: background-color 0.2s;';
+            li.onmouseover = function() { this.style.backgroundColor = '#f5f5f5'; };
+            li.onmouseout = function() { this.style.backgroundColor = 'white'; };
+            li.textContent = visitor.name + ' • ' + visitor.contact + ' • ' + visitor.dateTime;
             
             li.addEventListener('click', function(){
                 // compute Y-m-d from visitor.dateTime (format n/j/Y g:i A)
-                let rawDate = visitor.dateTime.split(' ')[0]; // e.g. "3/1/2026"
+                let rawDate = visitor.dateTime.split(' ')[0];
                 let parts = rawDate.split('/');
                 if (parts.length === 3) {
                     let m = parts[0].padStart(2,'0');

@@ -15,8 +15,27 @@ if ($end_date !== '') {
 }
 
 if ($start_date === '' && $end_date === '') {
-    // no filter supplied: show today
-    $start_date = $end_date = date('Y-m-d');
+    // no filter supplied: set From to earliest visitor and To to today
+    $earliest = '';
+    if ($conn) {
+        $r = $conn->query("SELECT MIN(created_at) AS earliest FROM visitor");
+        if ($r) {
+            $row = $r->fetch_assoc();
+            $earliest = $row['earliest'] ?? '';
+        }
+    }
+    if (!empty($earliest)) {
+        try {
+            $dt = new DateTime($earliest);
+            $dt->setTimezone(new DateTimeZone('Asia/Manila'));
+            $start_date = $dt->format('Y-m-d');
+        } catch (Exception $e) {
+            $start_date = date('Y-m-d');
+        }
+    } else {
+        $start_date = date('Y-m-d');
+    }
+    $end_date = date('Y-m-d');
 } elseif ($start_date === '') {
     $start_date = $end_date;
 } elseif ($end_date === '') {
@@ -345,9 +364,9 @@ if (isset($_GET['delete']) && $conn) {
                                     <th style='text-align:center'>Contact Number</th>
                                     <th style='text-align:center'>Valid ID Type</th>
                                     <th style='text-align:center'>No. of Visitors</th>
-                                    <th style='text-align:center'>Date &amp; Time</th>
+                                    <th style='text-align:center'>Checked In</th>
                                     <th style='text-align:center'>Status</th>
-                                    <th style='text-align:center'>Inactive Date &amp; Time</th>
+                                    <th style='text-align:center'>Checked Out</th>
                                     <th style='text-align:center'>Actions</th>
                                 </tr>
                             </thead>";
@@ -391,7 +410,7 @@ if (isset($_GET['delete']) && $conn) {
                         // Action button
                         $action_button = '';
                         if ($status === 'active') {
-                            $action_button = "<button type='button' class='btn-inactive' data-id='$visitor_id' style='background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 500;'>Inactive</button>";
+                            $action_button = "<button type='button' class='btn-inactive' data-id='$visitor_id' style='background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 500;'>Check Out</button>";
                         }
 
                         echo "<tr data-visitor-id='$visitor_id'>
@@ -490,6 +509,36 @@ if (isset($_GET['delete']) && $conn) {
             originalOrder.forEach(r => r.style.display = '');
         }
 
+        // Show all visitors on focus
+        autocompleteInput.addEventListener('focus', function(){
+            restoreOriginalOrder();
+            displayAllVisitors();
+        });
+
+        function displayAllVisitors() {
+            suggestionsList.innerHTML = '';
+            const sorted = [...allVisitors].sort((a, b) => a.name.localeCompare(b.name));
+            
+            sorted.slice(0, 8).forEach(visitor => {
+                const li = document.createElement('li');
+                li.style.cssText = 'padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #eee; transition: background-color 0.2s;';
+                li.onmouseover = function() { this.style.backgroundColor = '#f5f5f5'; };
+                li.onmouseout = function() { this.style.backgroundColor = ''; };
+                li.textContent = visitor.name + ' • ' + visitor.contact + ' • ' + visitor.dateTime;
+
+                li.addEventListener('click', function(){
+                    autocompleteInput.value = visitor.name;
+                    autocompleteInput.dispatchEvent(new Event('input'));
+                });
+
+                suggestionsList.appendChild(li);
+            });
+            
+            if (sorted.length > 0) {
+                suggestionsList.style.display = 'block';
+            }
+        }
+
         autocompleteInput.addEventListener('input', function(){
             const query = this.value.toLowerCase().trim();
             suggestionsList.innerHTML = '';
@@ -497,16 +546,16 @@ if (isset($_GET['delete']) && $conn) {
             if (!query) {
                 // show full table in original order
                 restoreOriginalOrder();
-                suggestionsList.style.display = 'none';
+                displayAllVisitors();
                 return;
             }
 
-            // Match by name, contact, ID, or date that start with the query (case-insensitive)
+            // Match by name, contact, ID, or date (case-insensitive)
             const matches = allVisitors.filter(visitor =>
-                visitor.name.toLowerCase().startsWith(query) ||
-                visitor.contact.toLowerCase().startsWith(query) ||
-                visitor.id.toLowerCase().startsWith(query) ||
-                visitor.dateTime.toLowerCase().startsWith(query)
+                visitor.name.toLowerCase().includes(query) ||
+                visitor.contact.toLowerCase().includes(query) ||
+                visitor.id.toLowerCase().includes(query) ||
+                visitor.dateTime.toLowerCase().includes(query)
             );
 
             if (matches.length === 0) {
