@@ -2,7 +2,7 @@
     // Use 127.0.0.1 to force TCP (avoids socket "No such file or directory" errors)
     $servername = "mysql";
     $username = "root";
-    $password = "";
+    $password = "root";
     $database_name = "Hospitalid_db";
     $port = 3306;
 
