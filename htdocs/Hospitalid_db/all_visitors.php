@@ -15,7 +15,7 @@ if ($end_date !== '') {
 }
 
 if ($start_date === '' && $end_date === '') {
-    // no dates supplied – default From to earliest visitor, To to tomorrow
+    // no dates supplied – default From to earliest visitor, To to today
     $earliest = '';
     if ($conn) {
         $r = $conn->query("SELECT MIN(created_at) AS earliest FROM visitor");
@@ -35,17 +35,17 @@ if ($start_date === '' && $end_date === '') {
     } else {
         $start_date = date('Y-m-d');
     }
-    // always use tomorrow for the end date
-    $end_date = date('Y-m-d', strtotime('+1 day'));
+    // always use today for the end date
+    $end_date = date('Y-m-d');
 } elseif ($start_date === '') {
     $start_date = $end_date;
 } elseif ($end_date === '') {
     $end_date = $start_date;
 }
 
-$sd_utc = date('Y-m-d H:i:s', strtotime("$start_date 00:00:00") - 8*3600);
-$ed_utc = date('Y-m-d H:i:s', strtotime("$end_date 23:59:59") - 8*3600);
-$whereClause = " WHERE created_at >= '$sd_utc' AND created_at <= '$ed_utc'";
+$sd_local = date('Y-m-d H:i:s', strtotime("$start_date 00:00:00"));
+$ed_local = date('Y-m-d H:i:s', strtotime("$end_date 23:59:59"));
+$whereClause = " WHERE created_at >= '$sd_local' AND created_at <= '$ed_local'";
 
 // pre-calc counts so we can show them above the table later
 $active_count = 0;
