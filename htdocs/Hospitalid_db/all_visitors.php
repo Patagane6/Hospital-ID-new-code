@@ -67,14 +67,14 @@ if ($conn) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>All Visitors - Hospital Visitor ID Recording System</title>
+    <title>All Visitors - Hospital Visitors ID Recording System</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
     <div class="header-content">
-        <h1>🏥 Hospital Visitor ID Recording System</h1>
+        <h1>🏥 Hospital Visitors ID Recording System</h1>
         <nav class="header-nav">
             <a href="index.php" class="nav-link">Dashboard</a>
             <a href="visitor.php" class="nav-link">Add Visitor</a>
