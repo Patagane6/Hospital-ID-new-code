@@ -423,7 +423,7 @@ if ($conn) {
 </div>
 
 <footer>
-    &copy; <?php echo date("Y"); ?> Hospital Visitor ID Recording System • All Visitors
+    &copy; <?php echo date("Y"); ?> Hospital Visitors ID Recording System • All Visitors
 </footer>
 
 </body>
