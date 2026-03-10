@@ -15,7 +15,7 @@ if ($end_date !== '') {
 }
 
 if ($start_date === '' && $end_date === '') {
-    // no filter supplied: set From to earliest visitor and To to today
+    // no filter supplied: set From to earliest visitor and To to tomorrow
     $earliest = '';
     if ($conn) {
         $r = $conn->query("SELECT MIN(created_at) AS earliest FROM visitor");
@@ -35,7 +35,7 @@ if ($start_date === '' && $end_date === '') {
     } else {
         $start_date = date('Y-m-d');
     }
-    $end_date = date('Y-m-d');
+    $end_date = date('Y-m-d', strtotime('+1 day'));
 } elseif ($start_date === '') {
     $start_date = $end_date;
 } elseif ($end_date === '') {
@@ -103,8 +103,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_visitor']) && $co
         if ($stmt->execute()) {
             $new_id = $conn->insert_id;
             $stmt->close();
-            $today = date('Y-m-d');
-            header("Location: all_visitors.php?start_date=$today&end_date=$today&highlight=$new_id&added=1");
+            // Redirect to All Visitors; let that page determine the default date range (oldest → tomorrow)
+            header("Location: all_visitors.php?highlight=$new_id&added=1");
             exit;
         } else {
             $add_error = $stmt->error;
@@ -137,14 +137,14 @@ if (isset($_GET['delete']) && $conn) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manage Visitors - Hospital Visitor System</title>
+    <title>Manage Visitors - Hospital Visitor ID Recording System</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
     <div class="header-content">
-        <h1>🏥 Hospital Visitor System</h1>
+        <h1>🏥 Hospital Visitor ID Recording System</h1>
         <nav class="header-nav">
             <a href="index.php" class="nav-link">Dashboard</a>
             <a href="visitor.php" class="nav-link active">Add Visitor</a>
@@ -666,7 +666,7 @@ if (isset($_GET['delete']) && $conn) {
 </div>
 
 <footer>
-    &copy; <?php echo date("Y"); ?> Hospital Visitor System • Visitor Management
+    &copy; <?php echo date("Y"); ?> Hospital Visitor ID Recording System • Visitor Management
 </footer>
 
 </body>

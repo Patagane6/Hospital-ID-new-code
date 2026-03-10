@@ -15,7 +15,7 @@ if ($end_date !== '') {
 }
 
 if ($start_date === '' && $end_date === '') {
-    // no dates supplied – default From to earliest visitor, To to today
+    // no dates supplied – default From to earliest visitor, To to tomorrow
     $earliest = '';
     if ($conn) {
         $r = $conn->query("SELECT MIN(created_at) AS earliest FROM visitor");
@@ -35,8 +35,8 @@ if ($start_date === '' && $end_date === '') {
     } else {
         $start_date = date('Y-m-d');
     }
-    // always use today for the end date
-    $end_date = date('Y-m-d');
+    // always use tomorrow for the end date
+    $end_date = date('Y-m-d', strtotime('+1 day'));
 } elseif ($start_date === '') {
     $start_date = $end_date;
 } elseif ($end_date === '') {
@@ -67,14 +67,14 @@ if ($conn) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>All Visitors - Hospital Visitor System</title>
+    <title>All Visitors - Hospital Visitor ID Recording System</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
     <div class="header-content">
-        <h1>🏥 Hospital Visitor System</h1>
+        <h1>🏥 Hospital Visitor ID Recording System</h1>
         <nav class="header-nav">
             <a href="index.php" class="nav-link">Dashboard</a>
             <a href="visitor.php" class="nav-link">Add Visitor</a>
@@ -423,7 +423,7 @@ if ($conn) {
 </div>
 
 <footer>
-    &copy; <?php echo date("Y"); ?> Hospital Visitor System • All Visitors
+    &copy; <?php echo date("Y"); ?> Hospital Visitor ID Recording System • All Visitors
 </footer>
 
 </body>

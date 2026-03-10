@@ -54,14 +54,14 @@ if ($result) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Hospital Visitor System</title>
+    <title>Dashboard - Hospital Visitor ID Recording System</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header>
     <div class="header-content">
-        <h1>🏥 Hospital Visitor System</h1>
+        <h1>🏥 Hospital Visitor ID Recording System</h1>
         <nav class="header-nav">
             <a href="index.php" class="nav-link active">Dashboard</a>
             <a href="visitor.php" class="nav-link">Add Visitor</a>
@@ -150,7 +150,7 @@ if ($result) {
     </div>
 
 <footer>
-    &copy; <?php echo date("Y"); ?> Hospital Visitor System
+    &copy; <?php echo date("Y"); ?> Hospital Visitor ID Recording System
 </footer>
 
 <script>
