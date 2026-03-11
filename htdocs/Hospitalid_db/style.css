@@ -45,11 +45,11 @@ body.login-page .card {
 }
 
 body.login-page .page-header h2 {
-  color: #1a3332;
+  color: #ffffff;
 }
 
 body.login-page .page-header p {
-  color: rgba(47, 85, 83, 0.8);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 body.login-page .btn {
