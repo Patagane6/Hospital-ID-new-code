@@ -34,10 +34,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 </head>
 <body>
 
-<div class="login-page">
-    <div class="login-card">
+<header>
+    <div class="header-content">
         <h1>🏥 Hospital Visitors ID Recording System</h1>
-        <p class="login-subtitle">Please sign in to continue.</p>
+        <nav class="header-nav">
+            <a href="login.php" class="nav-link active">Login</a>
+        </nav>
+    </div>
+</header>
+
+<div class="container" style="max-width: 520px; margin-top: 48px;">
+    <div class="page-header">
+        <h2>Sign in to continue</h2>
+        <p>Only authorized staff can access visitor registration.</p>
+    </div>
+
+    <div class="card form-card">
+        <h3>Front Desk Login</h3>
 
         <?php if ($login_error): ?>
             <div class="alert alert-error">❌ <?php echo htmlspecialchars($login_error); ?></div>
@@ -59,9 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         </form>
 
-        <div class="login-help">
-            <p>Use the front desk account to access the system.</p>
-        </div>
+        <p style="margin-top: 16px; color: #6fa39e; font-size: 0.9rem;">Use the front desk account to access the system.</p>
     </div>
 </div>
 
