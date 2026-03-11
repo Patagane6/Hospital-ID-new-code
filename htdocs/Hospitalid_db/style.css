@@ -19,6 +19,55 @@ html, body {
 
 /* Login page uses the existing site layout and card styles (see .container, .card, .form-card, and .btn). */
 
+/* ===== LOGIN PAGE ===== */
+body.login-page {
+  background: linear-gradient(135deg, #1a3332 0%, #2f5553 40%, #f5fbfb 100%);
+  min-height: 100vh;
+}
+
+.login-main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 0 40px;
+}
+
+.login-container {
+  max-width: 480px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+body.login-page .card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+}
+
+body.login-page .page-header h2 {
+  color: #1a3332;
+}
+
+body.login-page .page-header p {
+  color: rgba(47, 85, 83, 0.8);
+}
+
+body.login-page .btn {
+  width: 100%;
+  padding: 14px 18px;
+}
+
+body.login-page .header-nav .nav-link {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+body.login-page .header-nav .nav-link.active {
+  background: rgba(255, 255, 255, 0.35);
+}
+
 /* ===== HEADER & NAVIGATION ===== */
 header {
   background: linear-gradient(135deg, #2f5553 0%, #1a3332 100%);

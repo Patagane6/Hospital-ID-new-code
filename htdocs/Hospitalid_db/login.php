@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Login - Hospital Visitors ID Recording System</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="login-page">
 
 <header>
     <div class="header-content">
@@ -43,7 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </header>
 
-<div class="container" style="max-width: 520px; margin-top: 48px;">
+<main class="login-main">
+    <div class="container login-container">
     <div class="page-header">
         <h2>Sign in to continue</h2>
         <p>Only authorized staff can access visitor registration.</p>
@@ -74,7 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <p style="margin-top: 16px; color: #6fa39e; font-size: 0.9rem;">Use the front desk account to access the system.</p>
     </div>
-</div>
+    </div>
+</main>
 
 </body>
 </html>
