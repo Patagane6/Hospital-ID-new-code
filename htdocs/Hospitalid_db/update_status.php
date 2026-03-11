@@ -1,5 +1,8 @@
 <?php
+require_once __DIR__ . '/Includes/auth.php';
 require_once __DIR__ . '/Includes/database.php';
+
+require_login_api();
 
 header('Content-Type: application/json');
 

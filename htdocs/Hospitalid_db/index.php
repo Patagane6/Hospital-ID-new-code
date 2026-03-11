@@ -1,4 +1,8 @@
-<?php require_once __DIR__ . '/Includes/database.php'; 
+<?php
+require_once __DIR__ . '/Includes/auth.php';
+require_once __DIR__ . '/Includes/database.php';
+
+require_login();
 
 // Set timezone to Philippines
 date_default_timezone_set('Asia/Manila');
@@ -66,6 +70,7 @@ if ($result) {
             <a href="index.php" class="nav-link active">Dashboard</a>
             <a href="visitor.php" class="nav-link">Add Visitor</a>
             <a href="all_visitors.php" class="nav-link">All Visitors</a>
+            <a href="logout.php" class="nav-link">Logout</a>
         </nav>
     </div>
 </header>

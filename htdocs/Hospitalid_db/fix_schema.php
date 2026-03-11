@@ -4,7 +4,10 @@
  * Fixes visitor table columns without touching foreign keys
  */
 
+require_once __DIR__ . '/Includes/auth.php';
 require_once __DIR__ . '/Includes/database.php';
+
+require_login();
 
 if (!$conn) {
     die("Database connection failed. Please check your database configuration.");
