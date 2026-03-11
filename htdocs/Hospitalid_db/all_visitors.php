@@ -2,6 +2,7 @@
 require_once __DIR__ . '/Includes/auth.php';
 require_once __DIR__ . '/Includes/database.php';
 
+// Require login before showing visitor list
 require_login();
 
 // Set timezone to Philippines
@@ -89,7 +90,9 @@ if ($conn) {
             <a href="index.php" class="nav-link">Dashboard</a>
             <a href="visitor.php" class="nav-link">Add Visitor</a>
             <a href="all_visitors.php" class="nav-link active">All Visitors</a>
-            <a href="logout.php" class="nav-link">Logout</a>
+            <?php if (is_logged_in()): ?>
+                <a href="logout.php" class="nav-link">Logout</a>
+            <?php endif; ?>
         </nav>
     </div>
 </header>

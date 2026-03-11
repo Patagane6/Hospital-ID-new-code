@@ -1,29 +1,42 @@
 <?php
 require_once __DIR__ . '/Includes/auth.php';
+require_once __DIR__ . '/Includes/database.php';
 
-// If already logged in, go straight to dashboard
+// If already logged in, redirect to the main dashboard.
 if (is_logged_in()) {
     header('Location: index.php');
     exit;
 }
 
-$login_error = '';
+$username = '';
+$error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username'] ?? '');
-    $password = trim($_POST['password'] ?? '');
+    $password = $_POST['password'] ?? '';
 
-    if (authenticate($username, $password)) {
+    if ($username === '' || $password === '') {
+        $error = 'Please provide both username and password.';
+    } elseif (authenticate($username, $password)) {
         login_user($username);
-        header('Location: index.php');
+
+        // Redirect back to the original page if supplied (preserved via hidden field)
+        $redirect = $_POST['redirect'] ?? $_GET['redirect'] ?? 'index.php';
+        $redirect = str_replace(["\r", "\n", "\0"], '', $redirect);
+
+        // Prevent open redirect: reject full URLs and keep only local paths
+        $parsed = parse_url($redirect);
+        if (!empty($parsed['scheme']) || !empty($parsed['host'])) {
+            $redirect = 'index.php';
+        }
+
+        header('Location: ' . $redirect);
         exit;
+    } else {
+        $error = 'Invalid credentials. Please try again.';
     }
-
-    $login_error = 'Invalid username or password. Please try again.';
 }
-
 ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -37,44 +50,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <header>
     <div class="header-content">
         <h1>🏥 Hospital Visitors ID Recording System</h1>
-        <nav class="header-nav">
-            <a href="login.php" class="nav-link active">Login</a>
-        </nav>
     </div>
 </header>
 
-<div class="container" style="max-width: 520px; margin-top: 48px;">
-    <div class="page-header">
-        <h2>Sign in to continue</h2>
-        <p>Only authorized staff can access visitor registration.</p>
-    </div>
+<div class="container" style="max-width: 480px; padding-top: 48px;">
+    <div class="card form-card" style="padding: 32px;">
+        <h3>🔐 Staff Login</h3>
+        <p style="color:#6fa39e; margin-bottom: 18px;">Please sign in to access visitor registration.</p>
 
-    <div class="card form-card">
-        <h3>Front Desk Login</h3>
-
-        <?php if ($login_error): ?>
-            <div class="alert alert-error">❌ <?php echo htmlspecialchars($login_error); ?></div>
+        <?php if ($error !== ''): ?>
+            <div class="alert alert-error" style="margin-bottom:16px;">❌ <?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
 
         <form method="POST" action="">
-            <div class="form-group">
-                <label for="username">Username</label>
-                <input id="username" name="username" type="text" autocomplete="username" required>
-            </div>
+            <input type="hidden" name="redirect" value="<?php echo htmlspecialchars($_GET['redirect'] ?? ''); ?>">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" name="username" id="username" value="<?php echo htmlspecialchars($username); ?>" placeholder="Enter username" required autofocus>
+                </div>
 
-            <div class="form-group">
-                <label for="password">Password</label>
-                <input id="password" name="password" type="password" autocomplete="current-password" required>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" name="password" id="password" placeholder="Enter password" required>
+                </div>
             </div>
 
             <div class="form-actions">
                 <button type="submit" class="btn">Log In</button>
+                <button type="reset" class="btn secondary">Clear</button>
             </div>
         </form>
 
-        <p style="margin-top: 16px; color: #6fa39e; font-size: 0.9rem;">Use the front desk account to access the system.</p>
+        <div style="margin-top: 18px; font-size: 0.85rem; color: #8ca2a0;">
+            Use the front desk account to sign in.
+        </div>
     </div>
 </div>
+
+<footer style="margin-top: 40px; text-align: center; color:#8ca2a0;">
+    &copy; <?php echo date("Y"); ?> Hospital Visitors ID Recording System
+</footer>
 
 </body>
 </html>
