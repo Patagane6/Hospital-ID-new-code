@@ -340,7 +340,6 @@ if (isset($_GET['delete']) && $conn) {
                     <input type="hidden" name="highlight" value="<?php echo htmlspecialchars($_GET['highlight']); ?>">
                 <?php endif; ?>
             </form>
-            <div class="range-info">Showing visitors from <strong><?php echo htmlspecialchars($start_date); ?></strong> to <strong><?php echo htmlspecialchars($end_date); ?></strong>.</div>
             <div style="position: relative; width: 320px;">
                 <input type="text" id="autocompleteSearch" placeholder="🔍 Search by name, contact, or ID..." 
                        style="width: 100%; padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; font-size:14px; box-sizing:border-box;">

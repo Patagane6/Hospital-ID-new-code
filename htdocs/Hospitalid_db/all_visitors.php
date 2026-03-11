@@ -126,7 +126,6 @@ if ($conn) {
                     <div class="stat-label">Checked Out</div>
                 </div>
             </div>
-            <div class="range-info">Showing visitors from <strong><?php echo htmlspecialchars($start_date); ?></strong> to <strong><?php echo htmlspecialchars($end_date); ?></strong>.</div>
             <div style="position: relative;">
                 <input type="text" id="searchInput" placeholder="🔍 Search by name, contact, or ID..." onkeyup="filterTable()">
                 <ul id="searchSuggestions" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ddd; border-top: none; list-style: none; margin: 0; padding: 0; max-height: 300px; overflow-y: auto; display: none; z-index: 1000; border-radius: 0 0 8px 8px;">
