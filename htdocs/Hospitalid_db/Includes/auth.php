@@ -15,8 +15,8 @@ if (session_status() === PHP_SESSION_NONE) {
 // Change these values to update the shared login credentials.
 // In a real system, you would store users in a database and use a stronger policy.
 const AUTH_USERNAME = 'frontdesk';
-// Password: 'frontdesk101'
-const AUTH_PASSWORD_HASH = '$2y$10$X53Xpfc0IW1lcnxAv1ot6.AKOGgjKU46XkrE09xwlESkr.TCu0ZVS';
+// Password: 'Welcome123!'
+const AUTH_PASSWORD_HASH = '$2y$10$GbNJu7c8nLzQ9hRpnIYw4eVVz65VPDYZF9siU2dp4m6Vp8k1UyHkW';
 
 // -----------------------------------------------------------------------------
 // Authentication helpers
