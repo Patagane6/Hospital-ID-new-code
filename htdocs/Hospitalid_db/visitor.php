@@ -158,10 +158,21 @@ if (isset($_GET['delete']) && $conn) {
             <a href="index.php" class="nav-link">Dashboard</a>
             <a href="visitor.php" class="nav-link active">Add Visitor</a>
             <a href="all_visitors.php" class="nav-link">All Visitors</a>
-            <a href="logout.php" class="nav-link">Logout</a>
+            <a href="logout.php" class="nav-link logout-link">Logout</a>
         </nav>
     </div>
 </header>
+
+<div id="logoutModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="logoutModalTitle">
+    <div class="modal-content">
+        <h3 id="logoutModalTitle">You are about to log out</h3>
+        <p>Are you sure you want to end your session?</p>
+        <div class="modal-actions">
+            <button id="logoutConfirm" class="btn danger">Log Out</button>
+            <button id="logoutCancel" class="btn secondary">Cancel</button>
+        </div>
+    </div>
+</div>
 
 <div class="container">
     <div class="page-header">
@@ -677,6 +688,43 @@ if (isset($_GET['delete']) && $conn) {
 <footer>
     &copy; <?php echo date("Y"); ?> Hospital Visitors ID Recording System • Visitor Management
 </footer>
+
+<script>
+(function(){
+    const logoutLinks = document.querySelectorAll('.logout-link');
+    const modal = document.getElementById('logoutModal');
+    const confirmBtn = document.getElementById('logoutConfirm');
+    const cancelBtn = document.getElementById('logoutCancel');
+
+    if (!modal || logoutLinks.length === 0 || !confirmBtn || !cancelBtn) return;
+
+    function showModal() {
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+    }
+
+    function hideModal() {
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
+    }
+
+    logoutLinks.forEach(link => {
+        link.addEventListener('click', function(e){
+            e.preventDefault();
+            showModal();
+        });
+    });
+
+    cancelBtn.addEventListener('click', hideModal);
+    modal.addEventListener('click', function(e){
+        if (e.target === modal) hideModal();
+    });
+
+    confirmBtn.addEventListener('click', function(){
+        window.location.href = 'logout.php';
+    });
+})();
+</script>
 
 </body>
 </html>

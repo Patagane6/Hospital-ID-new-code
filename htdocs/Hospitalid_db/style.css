@@ -742,3 +742,48 @@ footer { text-align:center; color:#ffffff; background:#2f5553; padding:12px 8px;
 
 /* Utility */
 .btn-link { text-decoration:none; }
+
+/* Logout confirmation modal */
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1500;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.modal.show {
+  display: flex;
+}
+.modal-content {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+  text-align: center;
+}
+.modal-content h3 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: #234241;
+}
+.modal-content p {
+  margin: 0 0 20px;
+  color: #4a5a5a;
+}
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.btn.danger {
+  background: #d9534f;
+}
+.btn.danger:hover {
+  background: #c9302c;
+}
