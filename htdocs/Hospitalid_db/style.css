@@ -24,19 +24,24 @@ html, body {
   align-items: center;
   justify-content: center;
   padding: 48px 16px 64px;
-  background: linear-gradient(180deg, rgba(245,251,fb,0.85) 0%, rgba(225,245,245,0.85) 100%);
+  background: radial-gradient(circle at top, rgba(111,163,158,0.22), transparent 60%),
+              linear-gradient(180deg, #e9f5f4 0%, #f5fbfb 100%);
 }
 
 .login-card {
-  padding: 32px 32px 28px;
-  border-radius: 16px;
-  box-shadow: 0 18px 34px rgba(15, 35, 40, 0.14);
-  border: 1px solid rgba(112, 195, 186, 0.3);
+  width: min(480px, 100%);
+  padding: 36px 32px 30px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(111, 163, 158, 0.25);
+  box-shadow: 0 18px 40px rgba(15, 35, 40, 0.15);
+  backdrop-filter: blur(10px);
 }
 
 .login-card h3 {
-  margin-bottom: 16px;
+  margin-bottom: 18px;
   color: #2f5553;
+  font-size: 1.2rem;
 }
 
 .login-card .form-actions {
@@ -44,7 +49,20 @@ html, body {
 }
 
 .login-card .form-actions .btn {
-  min-width: 160px;
+  min-width: 170px;
+}
+
+/* ensure both input fields match exactly */
+.login-card input {
+  height: 44px;
+  padding: 10px 14px;
+  box-sizing: border-box;
+}
+
+.login-card label {
+  font-weight: 600;
+  color: #2f5553;
+  margin-bottom: 8px;
 }
 
 /* Login page uses the existing site layout and card styles (see .container, .card, .form-card, and .btn). */
