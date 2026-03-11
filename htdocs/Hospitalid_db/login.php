@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <p style="color:#6fa39e; margin-bottom: 18px;">Please sign in to access visitor registration.</p>
 
         <?php if ($error !== ''): ?>
-            <div class="alert alert-error" style="margin-bottom:16px;">❌ <?php echo htmlspecialchars($error); ?></div>
+            <div id="flash-msg" class="alert alert-error" style="margin-bottom:16px;">❌ <?php echo htmlspecialchars($error); ?></div>
         <?php endif; ?>
 
         <form method="POST" action="">
@@ -91,6 +91,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <footer style="margin-top: 40px; text-align: center; color:#8ca2a0;">
     &copy; <?php echo date("Y"); ?> Hospital Visitors ID Recording System
 </footer>
+
+<script>
+// Hide the login error message after a short delay
+setTimeout(function() {
+    var el = document.getElementById('flash-msg');
+    if (!el) return;
+    el.style.transition = 'opacity 0.5s';
+    el.style.opacity = '0';
+    setTimeout(function() { el.remove(); }, 500);
+}, 3000);
+</script>
 
 </body>
 </html>
