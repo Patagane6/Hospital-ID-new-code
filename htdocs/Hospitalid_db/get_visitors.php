@@ -13,8 +13,8 @@ if ($conn) {
     
     if ($result && $result->num_rows > 0) {
         while ($row = $result->fetch_assoc()) {
-            // Convert created_at to Philippines timezone
-            $dt = new DateTime($row['created_at']);
+            // Convert created_at (stored in UTC) to Philippines timezone
+            $dt = new DateTime($row['created_at'], new DateTimeZone('UTC'));
             $dt->setTimezone(new DateTimeZone('Asia/Manila'));
             $created_display = $dt->format('n/j/Y') . ' ' . $dt->format('g:i A');
             

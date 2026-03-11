@@ -26,7 +26,7 @@ if ($start_date === '' && $end_date === '') {
     }
     if (!empty($earliest)) {
         try {
-            $dt = new DateTime($earliest);
+            $dt = new DateTime($earliest, new DateTimeZone('UTC'));
             $dt->setTimezone(new DateTimeZone('Asia/Manila'));
             $start_date = $dt->format('Y-m-d');
         } catch (Exception $e) {
@@ -42,9 +42,13 @@ if ($start_date === '' && $end_date === '') {
     $end_date = $start_date;
 }
 
-// convert to UTC boundaries (Philippines = UTC+8)
-$sd_utc = date('Y-m-d H:i:s', strtotime("$start_date 00:00:00") - 8*3600);
-$ed_utc = date('Y-m-d H:i:s', strtotime("$end_date 23:59:59") - 8*3600);
+$sd = new DateTime("$start_date 00:00:00", new DateTimeZone('Asia/Manila'));
+$sd->setTimezone(new DateTimeZone('UTC'));
+$sd_utc = $sd->format('Y-m-d H:i:s');
+
+$ed = new DateTime("$end_date 23:59:59", new DateTimeZone('Asia/Manila'));
+$ed->setTimezone(new DateTimeZone('UTC'));
+$ed_utc = $ed->format('Y-m-d H:i:s');
 
 $whereClause = " WHERE created_at >= '$sd_utc' AND created_at <= '$ed_utc'";
 
@@ -383,7 +387,7 @@ if (isset($_GET['delete']) && $conn) {
                         $created_display = '';
                         if (!empty($row['created_at'])) {
                                 try {
-                                        $dt = new DateTime($row['created_at']);
+                                        $dt = new DateTime($row['created_at'], new DateTimeZone('UTC'));
                                         $dt->setTimezone(new DateTimeZone('Asia/Manila'));
                                         $created_display = $dt->format('n/j/Y') . '<br>' . $dt->format('g:i A');
                                 } catch (Exception $e) {
@@ -398,7 +402,7 @@ if (isset($_GET['delete']) && $conn) {
                         $inactive_display = '';
                         if (!empty($row['inactive_at']) && $status === 'inactive') {
                                 try {
-                                        $dt = new DateTime($row['inactive_at']);
+                                        $dt = new DateTime($row['inactive_at'], new DateTimeZone('UTC'));
                                         $dt->setTimezone(new DateTimeZone('Asia/Manila'));
                                         $inactive_display = $dt->format('n/j/Y') . '<br>' . $dt->format('g:i A');
                                 } catch (Exception $e) {
