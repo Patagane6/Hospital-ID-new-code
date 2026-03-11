@@ -1,10 +1,8 @@
 <?php
 require_once __DIR__ . '/Includes/auth.php';
-
-// API endpoints should return JSON errors if not authenticated
-require_login_api();
-
 require_once __DIR__ . '/Includes/database.php';
+
+require_login_api();
 
 // Set timezone to Philippines
 date_default_timezone_set('Asia/Manila');
