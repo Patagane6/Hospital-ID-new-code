@@ -1,119 +1,105 @@
 <?php
-// Simple session-based authentication helper for Hospital Visitors ID Recording System.
+// Simple authentication helpers for the Hospital Visitor Registration System.
 //
-// This file is intentionally lightweight and stores a single shared credential in-code.
-// It can be upgraded later to support a users table, multiple accounts, roles, etc.
+// This is intentionally designed to be easy to extend later (e.g. database-backed
+// users, roles/permissions, password reset, etc.).
 
-// Start session if not already started.
+// Start session if not already started
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// ---------- Configuration (single shared front desk account) ----------
-// NOTE: Update these values to change the credentials. For production, move to a users table.
-const AUTH_CREDENTIALS = [
-    // username => password hash
-    'frontdesk' => '$2y$10$UFdIkkYgOK7pWqEe7yIo6OxF0W0Yb.Ro4PpKnsouC2rJMnx.8gR0e' // password: frontdesk101
-];
+// -----------------------------------------------------------------------------
+// Configuration: single shared "front desk" account
+// -----------------------------------------------------------------------------
+// Change these values to update the shared login credentials.
+// In a real system, you would store users in a database and use a stronger policy.
+const AUTH_USERNAME = 'frontdesk';
+// Password: 'Welcome123!'
+const AUTH_PASSWORD_HASH = '$2y$10$GbNJu7c8nLzQ9hRpnIYw4eVVz65VPDYZF9siU2dp4m6Vp8k1UyHkW';
 
-// A chainable setting that can be used to show the current logged-in user.
-// Can be used in templates to show who is logged in.
-$current_user = $_SESSION['user'] ?? null;
-
-/**
- * Check whether the current session is authenticated.
- *
- * @return bool
- */
-function is_logged_in(): bool
-{
-    return isset($_SESSION['user']) && is_array($_SESSION['user']) && !empty($_SESSION['user']['username']);
-}
+// -----------------------------------------------------------------------------
+// Authentication helpers
+// -----------------------------------------------------------------------------
 
 /**
- * Authenticate credentials.
+ * Verify the provided username/password against the shared account.
  *
- * Current implementation checks a hardcoded credentials map.
- * Future improvements can query a `users` table with proper password hashing, lockouts, roles, etc.
- *
- * @param string $username
- * @param string $password
- * @return bool
+ * Upgrade notes:
+ * - To support multiple accounts, query a users table with (username, password_hash).
+ * - Store password hashes using password_hash() and verify with password_verify().
+ * - Add roles/permissions (e.g. `role` column) and check them in `require_login()`.
  */
 function authenticate(string $username, string $password): bool
 {
-    $username = trim($username);
-    if ($username === '') {
+    if (trim($username) === '' || trim($password) === '') {
         return false;
     }
 
-    if (!array_key_exists($username, AUTH_CREDENTIALS)) {
+    if (hash_equals(AUTH_USERNAME, $username) === false) {
         return false;
     }
 
-    $hash = AUTH_CREDENTIALS[$username];
-
-    return password_verify($password, $hash);
+    return password_verify($password, AUTH_PASSWORD_HASH);
 }
 
 /**
- * Enforce login for normal HTML pages. If not authenticated, redirect to login.
- *
- * @return void
+ * Returns true if the user is currently logged in.
+ */
+function is_logged_in(): bool
+{
+    return isset($_SESSION['user']) && is_array($_SESSION['user']);
+}
+
+/**
+ * Require a logged in user for normal pages.
+ * Redirects to login.php if not authenticated.
  */
 function require_login(): void
 {
-    if (is_logged_in()) {
-        return;
+    if (!is_logged_in()) {
+        // Ensure no partial output before redirect
+        if (!headers_sent()) {
+            header('Location: login.php');
+        }
+        exit;
     }
-
-    // Redirect back to login, preserving the current page for after login.
-    $current = $_SERVER['REQUEST_URI'] ?? '/';
-    $loginUrl = 'login.php?redirect=' . urlencode($current);
-    header('Location: ' . $loginUrl);
-    exit;
 }
 
 /**
- * Enforce login for API/JSON endpoints. Returns a JSON 401 error if unauthenticated.
- *
- * @return void
+ * Require login for API endpoints (JSON).
+ * Responds with 401 + JSON error instead of redirect.
  */
 function require_login_api(): void
 {
-    if (is_logged_in()) {
-        return;
+    if (!is_logged_in()) {
+        http_response_code(401);
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'message' => 'Authentication required']);
+        exit;
     }
-
-    http_response_code(401);
-    header('Content-Type: application/json');
-    echo json_encode(['success' => false, 'message' => 'Authentication required']);
-    exit;
 }
 
 /**
- * Log the user in for the current session.
- *
- * @param string $username
- * @return void
+ * Log the user in by storing session state.
  */
 function login_user(string $username): void
 {
+    // In future, store user metadata (id, name, roles) here.
     $_SESSION['user'] = [
         'username' => $username,
-        // future: add roles, display name, user ID, etc.
+        'logged_in_at' => time(),
     ];
 }
 
 /**
- * Clears the current session and logs out.
+ * Clear the session and log the user out.
  */
 function logout_user(): void
 {
-    // Clear session data
+    // Clear session data and destroy session cookie.
     $_SESSION = [];
 
-    // Destroy session cookie if present
     if (ini_get('session.use_cookies')) {
         $params = session_get_cookie_params();
         setcookie(
@@ -127,6 +113,5 @@ function logout_user(): void
         );
     }
 
-    // Destroy the session
     session_destroy();
 }
