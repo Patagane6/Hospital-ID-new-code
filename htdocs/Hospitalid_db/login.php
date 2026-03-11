@@ -43,14 +43,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </div>
 </header>
 
-<div class="container" style="max-width: 520px; margin-top: 48px;">
-    <div class="page-header">
-        <h2>Sign in to continue</h2>
-        <p>Only authorized staff can access visitor registration.</p>
-    </div>
+<div class="login-wrapper">
+    <div class="container" style="max-width: 520px;">
+        <div class="page-header">
+            <h2>Sign in to continue</h2>
+            <p>Only authorized staff can access visitor registration.</p>
+        </div>
 
-    <div class="card form-card">
-        <h3>Front Desk Login</h3>
+        <div class="card form-card login-card">
+            <h3>Front Desk Login</h3>
 
         <?php if ($login_error): ?>
             <div class="alert alert-error">❌ <?php echo htmlspecialchars($login_error); ?></div>
@@ -73,6 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </form>
 
         <p style="margin-top: 16px; color: #6fa39e; font-size: 0.9rem;">Use the front desk account to access the system.</p>
+    </div>
     </div>
 </div>
 
