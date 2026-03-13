@@ -17,7 +17,7 @@ $stats = [
 ];
 
 if ($conn) {
-$result = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor");
+$result = $conn->query("SELECT COUNT(*) AS total FROM visitor");
 if ($result) {
     $stats['total_visitors'] = $result->fetch_assoc()['total'];
 }
@@ -28,7 +28,7 @@ $today_ph = date('Y-m-d'); // e.g., 2026-02-26
 // Convert to UTC boundaries: Philippines is UTC+8, so subtract 8 hours for UTC
 $today_utc_start = date('Y-m-d H:i:s', strtotime("$today_ph 00:00:00") - 8*3600); // Start of today in UTC
 $today_utc_end = date('Y-m-d H:i:s', strtotime("$today_ph 23:59:59") - 8*3600);   // End of today in UTC
-$result = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor WHERE created_at >= '$today_utc_start' AND created_at <= '$today_utc_end'");
+$result = $conn->query("SELECT COUNT(*) AS total FROM visitor WHERE created_at >= '$today_utc_start' AND created_at <= '$today_utc_end'");
 if ($result) {
     $today_row = $result->fetch_assoc();
     $stats['today_visitors'] = $today_row['total'] ?? 0;
@@ -39,14 +39,14 @@ if ($result) {
     $stats['total_visits'] = $result->fetch_assoc()['total'];
 }
 
-$result = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor WHERE status = 'active' OR status IS NULL");
+$result = $conn->query("SELECT COUNT(*) AS total FROM visitor WHERE status = 'active' OR status IS NULL");
 if ($result) {
     $stats['checked_in_visits'] = $result->fetch_assoc()['total'];
 } // visitors whose status is checked in 
 
 
 // count visitors marked as checked out
-$result = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor WHERE status = 'inactive'");
+$result = $conn->query("SELECT COUNT(*) AS total FROM visitor WHERE status = 'inactive'");
 if ($result) {
     $stats['incomplete_visits'] = $result->fetch_assoc()['total'];
 }

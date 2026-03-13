@@ -62,11 +62,11 @@ $active_count = 0;
 $inactive_count = 0;
 $total_count = 0;
 if ($conn) {
-    $r = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor{$whereClause}");
+    $r = $conn->query("SELECT COUNT(*) AS total FROM visitor{$whereClause}");
     if ($r) { $total_count = $r->fetch_assoc()['total'] ?? 0; }
-    $r = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor{$whereClause} AND (status='active' OR status IS NULL)");
+    $r = $conn->query("SELECT COUNT(*) AS total FROM visitor{$whereClause} AND (status='active' OR status IS NULL)");
     if ($r) { $active_count = $r->fetch_assoc()['total'] ?? 0; }
-    $r = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor{$whereClause} AND status='inactive'");
+    $r = $conn->query("SELECT COUNT(*) AS total FROM visitor{$whereClause} AND status='inactive'");
     if ($r) { $inactive_count = $r->fetch_assoc()['total'] ?? 0; }
 }
 
@@ -185,8 +185,6 @@ if ($conn) {
                                     <th style='text-align:center'>ID</th>
                                     <th style='text-align:center'>Full Name</th>
                                     <th style='text-align:center'>Contact Number</th>
-                                    <th style='text-align:center'>Valid ID Type</th>
-                                    <th style='text-align:center'>No. of Visitors</th>
                                     <th style='text-align:center'>Checked In</th>
                                     <th style='text-align:center'>Status</th>
                                     <th style='text-align:center'>Checked Out</th>
@@ -198,8 +196,6 @@ if ($conn) {
                         $vid = htmlspecialchars($row['visitor_id']);
                         $vname = htmlspecialchars($row['full_name']);
                         $vcontact = htmlspecialchars($row['contact_number']);
-                        $valid = htmlspecialchars($row['valid_id']);
-                        $num_visitors = htmlspecialchars($row['number_of_visitors']);
                         $status = isset($row['status']) ? htmlspecialchars($row['status']) : 'active';
                         $visitor_id = $row['visitor_id'];
 
@@ -240,8 +236,6 @@ if ($conn) {
                                         <td><span class='id-badge'>#$vid</span></td>
                                         <td style='text-align:center'><strong>$vname</strong></td>
                                         <td style='text-align:center'>$vcontact</td>
-                                        <td style='text-align:center'><span class='id-type-badge'>$valid</span></td>
-                                        <td style='text-align:center'><span class='visitor-count'>$num_visitors</span></td>
                                         <td style='text-align:center'>$created_display</td>
                                         <td style='text-align:center'><span class='status-icon' data-status='$status'>$status_icon</span></td>
                                         <td style='text-align:center'>$inactive_display</td>
@@ -327,7 +321,7 @@ if ($conn) {
                         }
                         
                         // Display the inactive date/time in the new column
-                        const inactiveDateCell = row.querySelectorAll('td')[7]; // 8th column (0-indexed)
+                        const inactiveDateCell = row.querySelectorAll('td')[5]; // 6th column (0-indexed)
                         if (inactiveDateCell && data.inactive_at_display) {
                             inactiveDateCell.innerHTML = data.inactive_at_display;
                         }
@@ -370,7 +364,7 @@ if ($conn) {
                     id: cells[0].textContent.trim().replace(/^#/, ''),
                     name: cells[1].textContent.trim(),
                     contact: cells[2].textContent.trim(),
-                    dateTime: cells[5].textContent.trim(),
+                    dateTime: cells[3].textContent.trim(),
                     row: row
                 });
             }

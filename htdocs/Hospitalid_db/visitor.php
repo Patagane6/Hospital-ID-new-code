@@ -75,39 +75,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_visitor']) && $co
     }
     $contact_number = $conn->real_escape_string($contact_number_digits);
 
-    // allowed ID types
-    $allowed_ids = [
-        'Passport',
-        "Driver's License",
-        'Voter ID',
-        'SSS/GSIS ID',
-        'PhilHealth ID',
-        'Senior Citizen ID',
-        'Student ID',
-        'Other'
-    ];
-    $valid_id_raw = $_POST['valid_id'] ?? '';
-    if ($valid_id_raw === 'Other') {
-        $other_id = trim($_POST['valid_id_other'] ?? '');
-        if ($other_id === '') {
-            $add_error = $add_error ?: 'Please specify the other ID type.';
-            $valid_id = '';
-        } else {
-            $valid_id = $conn->real_escape_string($other_id);
-        }
-    } elseif (!in_array($valid_id_raw, $allowed_ids, true)) {
-        $add_error = $add_error ?: 'Invalid ID type selected.';
-        $valid_id = '';
-    } else {
-        $valid_id = $conn->real_escape_string($valid_id_raw);
-    }
-
-    $number_of_visitors = intval($_POST['number_of_visitors'] ?? 0);
-
     if ($add_error === '') {
         // Use prepared statement for security
-        $stmt = $conn->prepare("INSERT INTO visitor (full_name, contact_number, valid_id, number_of_visitors) VALUES (?, ?, ?, ?)");
-        $stmt->bind_param("sssi", $full_name, $contact_number, $valid_id, $number_of_visitors);
+        $stmt = $conn->prepare("INSERT INTO visitor (full_name, contact_number) VALUES (?, ?)");
+        $stmt->bind_param("ss", $full_name, $contact_number);
         
         if ($stmt->execute()) {
             $new_id = $conn->insert_id;
@@ -197,33 +168,6 @@ if (isset($_GET['delete']) && $conn) {
                            pattern="\d{11}" maxlength="11" minlength="11" 
                            title="Enter exactly 11 digits" required>
                 </div>
-
-                <div class="form-group" id="valid-id-group">
-                    <label for="valid_id">Type of Valid ID</label>
-                    <select name="valid_id" id="valid_id" required>
-                        <option value="">-- Select ID Type --</option>
-                        <option>Passport</option>
-                        <option>Driver's License</option>
-                        <option>Voter ID</option>
-                        <option>SSS/GSIS ID</option>
-                        <option>PhilHealth ID</option>
-                        <option>Senior Citizen ID</option>
-                        <option>Student ID</option>
-                        <option>Other</option>
-                    </select>
-                          <div id="other-inline" style="display:none; margin-top:0.5rem; gap:0.5rem; align-items:center;">
-                           <input type="text" name="valid_id_other" id="valid_id_other" placeholder="If Other, please specify" 
-                               style="flex:1; box-sizing:border-box;">
-                           <button type="button" id="choose-from-list" title="Choose from list" 
-                                style="background:#f0f0f0;border:1px solid #cfcfcf;padding:6px 8px;cursor:pointer;">Choose</button>
-                          </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="number_of_visitors">Number of Visitors</label>
-                    <input type="number" name="number_of_visitors" id="number_of_visitors" 
-                           min="0" placeholder="Enter number" required>
-                </div>
             </div>
 
             <div class="form-actions">
@@ -284,68 +228,6 @@ if (isset($_GET['delete']) && $conn) {
     });
     </script>
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function(){
-        var validSelect = document.getElementById('valid_id');
-        var otherInput = document.getElementById('valid_id_other');
-
-        var otherInline = document.getElementById('other-inline');
-
-        function showOtherInput() {
-            if (!validSelect || !otherInline || !otherInput) return;
-            // keep select value as 'Other' so server-side can detect it
-            validSelect.style.display = 'none';
-            otherInline.style.display = 'flex';
-            otherInput.required = true;
-            otherInput.focus();
-        }
-
-        function hideOtherInput() {
-            if (!validSelect || !otherInline || !otherInput) return;
-            otherInline.style.display = 'none';
-            otherInput.required = false;
-            otherInput.value = '';
-            validSelect.style.display = '';
-            validSelect.focus();
-        }
-
-        if (validSelect) {
-            validSelect.addEventListener('change', function(){
-                if (validSelect.value === 'Other') {
-                    showOtherInput();
-                }
-            });
-        }
-
-        // allow Esc key to cancel the Other input and return to select
-        if (otherInput) {
-            otherInput.addEventListener('keydown', function(e){
-                if (e.key === 'Escape') {
-                    validSelect.value = '';
-                    hideOtherInput();
-                }
-            });
-        }
-
-        // Allow clicking the 'Choose' button to return to the select options
-        var chooseBtn = document.getElementById('choose-from-list');
-        if (chooseBtn) {
-            chooseBtn.addEventListener('click', function(){
-                // show the select and focus it so user can pick another option
-                hideOtherInput();
-                validSelect.focus();
-                // On some browsers focusing does not open the dropdown. Setting size temporarily helps users see options.
-                try {
-                    validSelect.size = Math.min(8, validSelect.options.length);
-                    setTimeout(function(){ validSelect.size = 0; }, 500);
-                } catch (e) {
-                    // ignore if not supported
-                }
-            });
-        }
-    });
-    </script>
-
     <!-- Visitor List Card -->
     <div class="card" id="list">
         <div class="card-header">
@@ -382,8 +264,6 @@ if (isset($_GET['delete']) && $conn) {
                                     <th style='text-align:center'>ID</th>
                                     <th style='text-align:center'>Full Name</th>
                                     <th style='text-align:center'>Contact Number</th>
-                                    <th style='text-align:center'>Valid ID Type</th>
-                                    <th style='text-align:center'>No. of Visitors</th>
                                     <th style='text-align:center'>Checked In</th>
                                     <th style='text-align:center'>Status</th>
                                     <th style='text-align:center'>Checked Out</th>
@@ -395,8 +275,6 @@ if (isset($_GET['delete']) && $conn) {
                         $vid = htmlspecialchars($row['visitor_id']);
                         $vname = htmlspecialchars($row['full_name']);
                         $vcontact = htmlspecialchars($row['contact_number']);
-                        $valid = htmlspecialchars($row['valid_id']);
-                        $num_visitors = htmlspecialchars($row['number_of_visitors']);
                         $status = isset($row['status']) ? htmlspecialchars($row['status']) : 'active';
                         $visitor_id = $row['visitor_id'];
 
@@ -437,8 +315,6 @@ if (isset($_GET['delete']) && $conn) {
                                         <td><span class='id-badge'>#$vid</span></td>
                                         <td style='text-align:center'><strong>$vname</strong></td>
                                         <td style='text-align:center'>$vcontact</td>
-                                        <td style='text-align:center'><span class='id-type-badge'>$valid</span></td>
-                                        <td style='text-align:center'><span class='visitor-count'>$num_visitors</span></td>
                                         <td style='text-align:center'>$created_display</td>
                                         <td style='text-align:center'><span class='status-icon' data-status='$status'>$status_icon</span></td>
                                         <td style='text-align:center'>$inactive_display</td>
@@ -451,8 +327,8 @@ if (isset($_GET['delete']) && $conn) {
         echo "</table>";
         echo "</div>";
         
-        // Calculate total visitors including number_of_visitors field (same filter)
-        $total_result = $conn->query("SELECT COUNT(*) + SUM(number_of_visitors) AS total FROM visitor" . $whereClause);
+        // Calculate total visitor records for the selected date range
+        $total_result = $conn->query("SELECT COUNT(*) AS total FROM visitor" . $whereClause);
         $total_count = 0;
         if ($total_result) {
             $total_count = $total_result->fetch_assoc()['total'];
@@ -516,7 +392,7 @@ if (isset($_GET['delete']) && $conn) {
                     id: (cells[0] && cells[0].textContent.trim()) || '',
                     name: (cells[1] && cells[1].textContent.trim()) || '',
                     contact: (cells[2] && cells[2].textContent.trim()) || '',
-                    dateTime: (cells[5] && cells[5].textContent.trim()) || '',
+                    dateTime: (cells[3] && cells[3].textContent.trim()) || '',
                     row: row
                 };
             });
@@ -661,7 +537,7 @@ if (isset($_GET['delete']) && $conn) {
                         }
                         
                         // Display the inactive date/time in the new column
-                        const inactiveDateCell = row.querySelectorAll('td')[7]; // 8th column (0-indexed)
+                        const inactiveDateCell = row.querySelectorAll('td')[5]; // 6th column (0-indexed)
                         if (inactiveDateCell && data.inactive_at_display) {
                             inactiveDateCell.innerHTML = data.inactive_at_display;
                         }
