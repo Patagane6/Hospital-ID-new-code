@@ -7,55 +7,8 @@ require_login();
 // Set timezone to Philippines
 date_default_timezone_set('Asia/Manila');
 
-// --- date range filter defaults ---
-$start_date = $_GET['start_date'] ?? '';
-$end_date   = $_GET['end_date'] ?? '';
-
-if ($start_date !== '') {
-    $start_date = date('Y-m-d', strtotime($start_date));
-}
-if ($end_date !== '') {
-    $end_date = date('Y-m-d', strtotime($end_date));
-}
-
-if ($start_date === '' && $end_date === '') {
-    // no dates supplied – default From to earliest visitor, To to today
-    $earliest = '';
-    if ($conn) {
-        $r = $conn->query("SELECT MIN(created_at) AS earliest FROM visitor");
-        if ($r) {
-            $row = $r->fetch_assoc();
-            $earliest = $row['earliest'] ?? '';
-        }
-    }
-    if (!empty($earliest)) {
-        try {
-            $dt = new DateTime($earliest, new DateTimeZone('UTC'));
-            $dt->setTimezone(new DateTimeZone('Asia/Manila'));
-            $start_date = $dt->format('Y-m-d');
-        } catch (Exception $e) {
-            $start_date = date('Y-m-d');
-        }
-    } else {
-        $start_date = date('Y-m-d');
-    }
-    // always use today for the end date
-    $end_date = date('Y-m-d');
-} elseif ($start_date === '') {
-    $start_date = $end_date;
-} elseif ($end_date === '') {
-    $end_date = $start_date;
-}
-
-$sd = new DateTime("$start_date 00:00:00", new DateTimeZone('Asia/Manila'));
-$sd->setTimezone(new DateTimeZone('UTC'));
-$sd_utc = $sd->format('Y-m-d H:i:s');
-
-$ed = new DateTime("$end_date 23:59:59", new DateTimeZone('Asia/Manila'));
-$ed->setTimezone(new DateTimeZone('UTC'));
-$ed_utc = $ed->format('Y-m-d H:i:s');
-
-$whereClause = " WHERE created_at >= '$sd_utc' AND created_at <= '$ed_utc'";
+// Show all visitors on this page (date range controls were removed).
+$whereClause = "";
 
 // pre-calc counts so we can show them above the table later
 $active_count = 0;
@@ -121,16 +74,7 @@ if ($conn) {
     <div class="card" id="list">
         <div class="card-header">
             <h3>📋 Registered Visitors</h3>
-            <form method="GET" class="date-range-form" aria-label="Filter visitors by date range">
-                <label><span class="cal-icon">📅</span> From&nbsp;<input type="date" name="start_date" aria-label="Start date" value="<?php echo htmlspecialchars($start_date); ?>"></label>
-                <label><span class="cal-icon">📅</span> To&nbsp;<input type="date" name="end_date" aria-label="End date" value="<?php echo htmlspecialchars($end_date); ?>"></label>
-                <button type="submit" class="btn" title="Apply date range">Apply</button>
-                <?php if(isset($_GET['highlight'])): ?>
-                    <input type="hidden" name="highlight" value="<?php echo htmlspecialchars($_GET['highlight']); ?>">
-                <?php endif; ?>
-                <a href="all_visitors.php" class="btn secondary" title="Clear filters">Reset</a>
-            </form>
-            <div class="range-summary-title">Summary for selected dates</div>
+            <div class="range-summary-title">Summary</div>
             <div class="range-stats">
                 <div class="stat-card visitors">
                     <div class="stat-icon">👥</div>
@@ -303,7 +247,7 @@ if ($conn) {
     } else {
         echo "<div class='empty-state'>";
         echo "<div class='empty-icon'>📭</div>";
-        echo "<p>No visitors found for the selected date range ({$start_date} to {$end_date}).</p>";
+        echo "<p>No visitors found.</p>";
         echo "<p class='empty-hint'>Go to Visitors page to add a new visitor</p>";
         echo "</div>";
     }
@@ -572,6 +516,42 @@ if ($conn) {
 
         updateVisibleDateGroups();
     }
+
+    function pollForNewVisitors() {
+        if (document.hidden || (searchInput && searchInput.value.trim() !== '')) {
+            return;
+        }
+
+        fetch('get_visitors.php?ts=' + Date.now(), { cache: 'no-store' })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (!Array.isArray(data)) return;
+
+                const serverIds = data
+                    .map(v => String(v.id))
+                    .sort((a, b) => Number(a) - Number(b))
+                    .join(',');
+
+                const localIds = Array.from(document.querySelectorAll('.visitor-row'))
+                    .map(row => String(row.getAttribute('data-visitor-id')))
+                    .sort((a, b) => Number(a) - Number(b))
+                    .join(',');
+
+                if (serverIds !== localIds) {
+                    window.location.reload();
+                }
+            })
+            .catch(() => {
+                // Ignore transient polling errors.
+            });
+    }
+
+    setInterval(pollForNewVisitors, 8000);
 
     // Hide suggestions when clicking outside
     document.addEventListener('click', function(e){
