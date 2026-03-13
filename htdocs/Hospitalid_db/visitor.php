@@ -65,12 +65,10 @@ $add_error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_visitor']) && $conn) {
     $full_name = $conn->real_escape_string(trim($_POST['full_name'] ?? ''));
 
-    // sanitize contact number: keep digits only and validate (must be exactly 11 digits)
+    // Contact number is optional; if provided, it must be exactly 11 digits.
     $contact_number_raw = $_POST['contact_number'] ?? '';
     $contact_number_digits = preg_replace('/\D+/', '', $contact_number_raw);
-    if ($contact_number_digits === '') {
-        $add_error = 'Contact number must contain digits only.';
-    } elseif (strlen($contact_number_digits) !== 11) {
+    if ($contact_number_digits !== '' && strlen($contact_number_digits) !== 11) {
         $add_error = $add_error ?: 'Contact number must be exactly 11 digits.';
     }
     $contact_number = $conn->real_escape_string($contact_number_digits);
@@ -166,7 +164,7 @@ if (isset($_GET['delete']) && $conn) {
                     <input type="text" name="contact_number" id="contact_number" 
                            placeholder="09XXXXXXXXX" inputmode="numeric" 
                            pattern="\d{11}" maxlength="11" minlength="11" 
-                           title="Enter exactly 11 digits" required>
+                           title="Enter exactly 11 digits if provided">
                 </div>
             </div>
 
