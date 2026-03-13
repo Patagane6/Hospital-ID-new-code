@@ -139,7 +139,7 @@ if ($result) {
                 <div class="action-desc">Browse visitor records</div>
             </a>
             
-            <button id="searchBtn" class="action-card" style="border: none; background: none; cursor: pointer; padding: 0;">
+            <button id="searchBtn" class="action-card" style="cursor: pointer;">
                 <div class="action-icon">🔍</div>
                 <div class="action-title">Search Visitor</div>
                 <div class="action-desc">Find visitor by name or ID</div>
