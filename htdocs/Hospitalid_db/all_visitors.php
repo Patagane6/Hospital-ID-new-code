@@ -8,7 +8,7 @@ require_login();
 date_default_timezone_set('Asia/Manila');
 
 // Show all visitors on this page (date range controls were removed).
-$whereClause = "";
+$whereClause = " WHERE 1=1";
 
 // pre-calc counts so we can show them above the table later
 $active_count = 0;
