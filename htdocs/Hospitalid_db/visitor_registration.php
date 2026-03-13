@@ -53,7 +53,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_visitor']) && $co
         <h1>🏥 Hospital Visitors ID Recording System</h1>
         <nav class="header-nav">
             <a href="visitor_registration.php" class="nav-link active">Visitor Registration</a>
-            <a href="login.php" class="nav-link">Staff Login</a>
         </nav>
     </div>
 </header>
