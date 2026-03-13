@@ -728,7 +728,9 @@ textarea:focus {
   -webkit-appearance: none;
   width: 100%;
   border: none;
-  background: linear-gradient(135deg, #f7fbfb 0%, #edf6f6 100%);
+  border-left: 5px solid #6fa39e;
+  border-bottom: 1px solid #e0f0f0;
+  background: #ffffff;
   padding: 16px 18px;
   display: flex;
   align-items: center;
@@ -738,11 +740,12 @@ textarea:focus {
   text-align: left;
   font: inherit;
   color: inherit;
-  border-bottom: 1px solid #e3f0ef;
+  transition: background 0.18s ease, border-left-color 0.18s ease;
 }
 
 .date-group-toggle:hover {
-  background: linear-gradient(135deg, #f2f8f8 0%, #e7f2f2 100%);
+  background: #f7fbfb;
+  border-left-color: #2f5553;
 }
 
 .date-group-title-wrap {
@@ -766,7 +769,7 @@ textarea:focus {
 
 .date-group-title {
   display: block;
-  color: #234241;
+  color: #1a3332;
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.2;
@@ -811,10 +814,11 @@ textarea:focus {
 }
 
 .date-group-caret {
-  color: #2f5553;
-  font-size: 0.95rem;
+  color: #6fa39e;
+  font-size: 1.1rem;
   transition: transform 0.2s ease;
-  margin-left: 2px;
+  margin-left: 4px;
+  flex-shrink: 0;
 }
 
 .date-group-toggle[aria-expanded="false"] .date-group-caret {
