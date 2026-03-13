@@ -262,11 +262,10 @@ if ($conn) {
                         <span class='date-group-icon'>🗓️</span>
                         <span>
                             <span class='date-group-title'>$safe_group_label</span>
-                            <span class='date-group-subtitle'>{$group['total']} visitor(s) recorded</span>
+                            <span class='date-group-subtitle'>{$group['total']} visitor(s)</span>
                         </span>
                     </span>
                     <span class='date-group-metrics'>
-                        <span class='date-chip total'>Total {$group['total']}</span>
                         <span class='date-chip checked-in'>In {$group['checked_in']}</span>
                         <span class='date-chip checked-out'>Out {$group['checked_out']}</span>
                         <span class='date-group-caret' aria-hidden='true'>▾</span>
@@ -360,12 +359,10 @@ if ($conn) {
             const checkedIn = total - checkedOut;
 
             const subtitle = group.querySelector('.date-group-subtitle');
-            const totalChip = group.querySelector('.date-chip.total');
             const checkedInChip = group.querySelector('.date-chip.checked-in');
             const checkedOutChip = group.querySelector('.date-chip.checked-out');
 
-            if (subtitle) subtitle.textContent = `${total} visitor(s) recorded`;
-            if (totalChip) totalChip.textContent = `Total ${total}`;
+            if (subtitle) subtitle.textContent = `${total} visitor(s)`;
             if (checkedInChip) checkedInChip.textContent = `In ${checkedIn}`;
             if (checkedOutChip) checkedOutChip.textContent = `Out ${checkedOut}`;
         }
