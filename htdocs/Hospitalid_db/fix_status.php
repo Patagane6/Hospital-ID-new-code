@@ -20,6 +20,6 @@ if ($conn) {
 }
 
 // Redirect back to visitor page
-header('Location: visitor.php');
+header('Location: all_visitors.php');
 exit;
 ?>

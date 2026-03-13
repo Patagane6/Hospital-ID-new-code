@@ -5,6 +5,10 @@ require_once __DIR__ . '/Includes/database.php';
 
 require_login();
 
+// Add Visitor page is retired. Use registration popup in All Visitors.
+header('Location: all_visitors.php?open_register=1');
+exit;
+
 // Set timezone to Philippines
 date_default_timezone_set('Asia/Manila');
 

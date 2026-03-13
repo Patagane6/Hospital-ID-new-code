@@ -118,7 +118,7 @@ echo "</ul>";
 
 if (empty($errors)) {
     echo "<p style='color: green; font-weight: bold; font-size: 1.2em;'>✅ All fixes applied successfully!</p>";
-    echo "<p><a href='visitor.php' style='padding: 10px 20px; background: #6fa39e; color: white; text-decoration: none; border-radius: 8px; display: inline-block;'>Go to Visitor Management →</a></p>";
+    echo "<p><a href='all_visitors.php' style='padding: 10px 20px; background: #6fa39e; color: white; text-decoration: none; border-radius: 8px; display: inline-block;'>Go to Visitor Management →</a></p>";
 } else {
     echo "<p style='color: red; font-weight: bold;'>⚠️ Some errors occurred. Please check the messages above.</p>";
     echo "<p>You may need to manually fix these issues in phpMyAdmin.</p>";

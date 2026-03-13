@@ -421,6 +421,49 @@ header {
   margin: 0;
 }
 
+.list-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px;
+}
+
+.register-modal-content {
+  max-width: 760px;
+  text-align: left;
+}
+
+.register-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.register-modal-header h3 {
+  margin: 0;
+}
+
+.register-modal-close {
+  border: none;
+  background: transparent;
+  color: #2f5553;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.register-modal-close:hover {
+  color: #1a3332;
+}
+
+.register-modal-content .form-actions {
+  margin-top: 14px;
+}
+
 /* ===== FORMS ===== */
 .form-grid {
   display: grid;
@@ -930,6 +973,11 @@ footer {
   }
   
   .card-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .list-header-actions {
     flex-direction: column;
     align-items: stretch;
   }

@@ -68,7 +68,6 @@ if ($result) {
         <h1>🏥 Hospital Visitors ID Recording System</h1>
         <nav class="header-nav">
             <a href="index.php" class="nav-link active">Dashboard</a>
-            <a href="visitor.php" class="nav-link">Add Visitor</a>
             <a href="all_visitors.php" class="nav-link">All Visitors</a>
             <a href="logout.php" class="nav-link logout-link">Logout</a>
         </nav>
@@ -125,12 +124,12 @@ if ($result) {
     <!-- Quick Actions -->
     <div class="quick-actions">
         <h2>Quick Actions</h2>
-        <p style="color:#546e7a; font-size:0.9rem; margin-bottom:12px;">Use the cards below to add, view or search visitors quickly.</p>
+        <p style="color:#546e7a; font-size:0.9rem; margin-bottom:12px;">Use the cards below to register, view or search visitors quickly.</p>
         <div class="action-grid">
-            <a href="visitor.php" class="action-card">
+            <a href="all_visitors.php?open_register=1" class="action-card">
                 <div class="action-icon">➕</div>
-                <div class="action-title">Add New Visitor</div>
-                <div class="action-desc">Register a new visitor</div>
+                <div class="action-title">Register Visitor</div>
+                <div class="action-desc">Open registration form</div>
             </a>
             
             <a href="all_visitors.php" class="action-card">

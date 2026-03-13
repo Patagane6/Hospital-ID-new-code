@@ -10,6 +10,46 @@ date_default_timezone_set('Asia/Manila');
 // Show all visitors on this page (date range controls were removed).
 $whereClause = " WHERE 1=1";
 
+$add_error = '';
+$should_open_register_modal = (isset($_GET['open_register']) && $_GET['open_register'] == '1');
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_visitor']) && $conn) {
+    $full_name_raw = trim($_POST['full_name'] ?? '');
+    if ($full_name_raw === '') {
+        $add_error = 'Full name is required.';
+    }
+
+    // Contact number is optional; if provided, it must be exactly 11 digits.
+    $contact_number_raw = $_POST['contact_number'] ?? '';
+    $contact_number_digits = preg_replace('/\D+/', '', $contact_number_raw);
+    if ($contact_number_digits !== '' && strlen($contact_number_digits) !== 11) {
+        $add_error = $add_error ?: 'Contact number must be exactly 11 digits if provided.';
+    }
+
+    if ($add_error === '') {
+        $full_name = $conn->real_escape_string($full_name_raw);
+        $contact_number = $conn->real_escape_string($contact_number_digits);
+        $valid_id = 'Not provided';
+
+        $stmt = $conn->prepare("INSERT INTO visitor (full_name, contact_number, valid_id) VALUES (?, ?, ?)");
+        $stmt->bind_param('sss', $full_name, $contact_number, $valid_id);
+
+        if ($stmt->execute()) {
+            $new_id = $conn->insert_id;
+            $stmt->close();
+            header("Location: all_visitors.php?added=1&highlight=$new_id");
+            exit;
+        }
+
+        $add_error = $stmt->error;
+        $stmt->close();
+    }
+
+    if ($add_error !== '') {
+        $should_open_register_modal = true;
+    }
+}
+
 // pre-calc counts so we can show them above the table later
 $active_count = 0;
 $inactive_count = 0;
@@ -40,7 +80,6 @@ if ($conn) {
         <h1>🏥 Hospital Visitors ID Recording System</h1>
         <nav class="header-nav">
             <a href="index.php" class="nav-link">Dashboard</a>
-            <a href="visitor.php" class="nav-link">Add Visitor</a>
             <a href="all_visitors.php" class="nav-link active">All Visitors</a>
             <a href="logout.php" class="nav-link logout-link">Logout</a>
         </nav>
@@ -55,6 +94,48 @@ if ($conn) {
             <button id="logoutConfirm" class="btn danger">Log Out</button>
             <button id="logoutCancel" class="btn secondary">Cancel</button>
         </div>
+    </div>
+</div>
+
+<div id="registerVisitorModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="registerVisitorModalTitle">
+    <div class="modal-content register-modal-content">
+        <div class="register-modal-header">
+            <h3 id="registerVisitorModalTitle">➕ Register New Visitor</h3>
+            <button type="button" id="registerModalClose" class="register-modal-close" aria-label="Close registration form">✕</button>
+        </div>
+
+        <form method="POST" action="all_visitors.php" novalidate>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="register_full_name">Full Name</label>
+                    <input type="text" name="full_name" id="register_full_name" placeholder="Enter full name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="register_contact_number">Contact Number (Optional)</label>
+                    <input
+                        type="text"
+                        name="contact_number"
+                        id="register_contact_number"
+                        placeholder="09XXXXXXXXX"
+                        inputmode="numeric"
+                        pattern="\d{11}"
+                        maxlength="11"
+                        minlength="11"
+                        title="Enter exactly 11 digits if provided"
+                    >
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" name="add_visitor" class="btn">Add Visitor</button>
+                <button type="button" id="registerModalCancel" class="btn secondary">Cancel</button>
+            </div>
+        </form>
+
+        <?php if (!empty($add_error)): ?>
+            <div id="register-form-error" class="alert alert-error">❌ Error: <?php echo htmlspecialchars($add_error); ?></div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -73,7 +154,10 @@ if ($conn) {
     <!-- Visitor List Card -->
     <div class="card" id="list">
         <div class="card-header">
-            <h3>📋 Registered Visitors</h3>
+            <div class="list-header-actions">
+                <h3>📋 Registered Visitors</h3>
+                <button type="button" class="btn" id="openRegisterModal">Register</button>
+            </div>
             <div class="range-summary-title">Summary</div>
             <div class="range-stats">
                 <div class="stat-card visitors">
@@ -260,9 +344,65 @@ if ($conn) {
     <script>
     // Highlight visitor if URL parameter is present and handle Inactive button
     document.addEventListener('DOMContentLoaded', function(){
+        const shouldOpenRegisterModal = <?php echo $should_open_register_modal ? 'true' : 'false'; ?>;
         const urlParams = new URLSearchParams(window.location.search);
         let highlightId = urlParams.get('highlight') || '';
         const dateGroups = Array.from(document.querySelectorAll('.date-group'));
+        const registerModal = document.getElementById('registerVisitorModal');
+        const openRegisterModalBtn = document.getElementById('openRegisterModal');
+        const registerModalCloseBtn = document.getElementById('registerModalClose');
+        const registerModalCancelBtn = document.getElementById('registerModalCancel');
+        const registerContactInput = document.getElementById('register_contact_number');
+
+        function showRegisterModal() {
+            if (!registerModal) return;
+            registerModal.classList.add('show');
+            registerModal.setAttribute('aria-hidden', 'false');
+        }
+
+        function hideRegisterModal() {
+            if (!registerModal) return;
+            registerModal.classList.remove('show');
+            registerModal.setAttribute('aria-hidden', 'true');
+        }
+
+        if (openRegisterModalBtn) {
+            openRegisterModalBtn.addEventListener('click', showRegisterModal);
+        }
+
+        if (registerModalCloseBtn) {
+            registerModalCloseBtn.addEventListener('click', hideRegisterModal);
+        }
+
+        if (registerModalCancelBtn) {
+            registerModalCancelBtn.addEventListener('click', hideRegisterModal);
+        }
+
+        if (registerModal) {
+            registerModal.addEventListener('click', function(e){
+                if (e.target === registerModal) {
+                    hideRegisterModal();
+                }
+            });
+        }
+
+        if (registerContactInput) {
+            registerContactInput.addEventListener('input', function(){
+                this.value = this.value.replace(/\D/g, '').slice(0, 11);
+            });
+
+            registerContactInput.addEventListener('keydown', function(e){
+                const allowed = [8, 9, 13, 27, 37, 38, 39, 40, 46];
+                if (allowed.indexOf(e.keyCode) !== -1) return;
+                if (e.ctrlKey || e.metaKey) return;
+                if ((e.keyCode >= 48 && e.keyCode <= 57) || (e.keyCode >= 96 && e.keyCode <= 105)) return;
+                e.preventDefault();
+            });
+        }
+
+        if (shouldOpenRegisterModal) {
+            showRegisterModal();
+        }
 
         function setGroupExpanded(group, expanded) {
             if (!group) return;
