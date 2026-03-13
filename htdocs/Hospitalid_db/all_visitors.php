@@ -134,17 +134,17 @@ if ($conn) {
             <div class="range-stats">
                 <div class="stat-card visitors">
                     <div class="stat-icon">👥</div>
-                    <div class="stat-value"><?php echo $total_count; ?></div>
+                    <div class="stat-value" id="summaryTotalCount"><?php echo $total_count; ?></div>
                     <div class="stat-label">Visitors</div>
                 </div>
                 <div class="stat-card checked-in">
                     <div class="stat-icon">✅</div>
-                    <div class="stat-value"><?php echo $active_count; ?></div>
+                    <div class="stat-value" id="summaryActiveCount"><?php echo $active_count; ?></div>
                     <div class="stat-label">Checked In</div>
                 </div>
                 <div class="stat-card inactive">
                     <div class="stat-icon">🚫</div>
-                    <div class="stat-value"><?php echo $inactive_count; ?></div>
+                    <div class="stat-value" id="summaryInactiveCount"><?php echo $inactive_count; ?></div>
                     <div class="stat-label">Checked Out</div>
                 </div>
             </div>
@@ -178,74 +178,123 @@ if ($conn) {
     $result = $conn->query($sql);
 
     if ($result && $result->num_rows > 0) {
-        echo "<div class='table-responsive'>";
-        echo "<table class='visitor-table' id='visitorTable'>";
-                echo "<thead>
-                                <tr>
-                                    <th style='text-align:center'>ID</th>
-                                    <th style='text-align:center'>Full Name</th>
-                                    <th style='text-align:center'>Contact Number</th>
-                                    <th style='text-align:center'>Checked In</th>
-                                    <th style='text-align:center'>Status</th>
-                                    <th style='text-align:center'>Checked Out</th>
-                                    <th style='text-align:center'>Actions</th>
-                                </tr>
-                            </thead>";
-        echo "<tbody>";
+        $visitor_groups = [];
                 while ($row = $result->fetch_assoc()) {
-                        $vid = htmlspecialchars($row['visitor_id']);
-                        $vname = htmlspecialchars($row['full_name']);
-                        $vcontact = htmlspecialchars($row['contact_number']);
-                        $status = isset($row['status']) ? htmlspecialchars($row['status']) : 'active';
-                        $visitor_id = $row['visitor_id'];
+            $vid = htmlspecialchars($row['visitor_id']);
+            $vname = htmlspecialchars($row['full_name']);
+            $vcontact_raw = trim((string) ($row['contact_number'] ?? ''));
+            $vcontact = $vcontact_raw !== '' ? htmlspecialchars($vcontact_raw) : '<span class="muted-value">No contact</span>';
+            $status = isset($row['status']) ? htmlspecialchars($row['status']) : 'active';
+            $visitor_id = $row['visitor_id'];
 
-                        // format created_at to Philippines time
-                        $created_display = '';
-                        if (!empty($row['created_at'])) {
-                                try {
-                                        $dt = new DateTime($row['created_at'], new DateTimeZone('UTC'));
-                                        $dt->setTimezone(new DateTimeZone('Asia/Manila'));
-                                        $created_display = $dt->format('n/j/Y') . '<br>' . $dt->format('g:i A');
-                                } catch (Exception $e) {
-                                        $created_display = htmlspecialchars($row['created_at']);
-                                }
-                        }
-
-                        // Status icon
-                        $status_icon = ($status === 'active') ? '🟢' : '🔴';
-
-                        // Format inactive_at to Philippines time
-                        $inactive_display = '';
-                        if (!empty($row['inactive_at']) && $status === 'inactive') {
-                                try {
-                                        $dt = new DateTime($row['inactive_at'], new DateTimeZone('UTC'));
-                                        $dt->setTimezone(new DateTimeZone('Asia/Manila'));
-                                        $inactive_display = $dt->format('n/j/Y') . '<br>' . $dt->format('g:i A');
-                                } catch (Exception $e) {
-                                        $inactive_display = '';
-                                }
-                        }
-
-                        // Action button
-                        $action_button = '';
-                        if ($status === 'active') {
-                            $action_button = "<button type='button' class='btn-inactive' data-id='$visitor_id' style='background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 500;'>Check Out</button>";
-                        }
-
-                        echo "<tr data-visitor-id='$visitor_id'>
-                                        <td><span class='id-badge'>#$vid</span></td>
-                                        <td style='text-align:center'><strong>$vname</strong></td>
-                                        <td style='text-align:center'>$vcontact</td>
-                                        <td style='text-align:center'>$created_display</td>
-                                        <td style='text-align:center'><span class='status-icon' data-status='$status'>$status_icon</span></td>
-                                        <td style='text-align:center'>$inactive_display</td>
-                                        <td style='text-align:center'>
-                                            $action_button
-                                        </td>
-                                    </tr>";
+            $group_key = 'unknown-date';
+            $group_label = 'Unknown Date';
+            $created_display = '';
+            if (!empty($row['created_at'])) {
+                try {
+                    $dt = new DateTime($row['created_at'], new DateTimeZone('UTC'));
+                    $dt->setTimezone(new DateTimeZone('Asia/Manila'));
+                    $group_key = $dt->format('Y-m-d');
+                    $group_label = $dt->format('F j, Y');
+                    $created_display = $dt->format('n/j/Y') . '<br>' . $dt->format('g:i A');
+                } catch (Exception $e) {
+                    $created_display = htmlspecialchars($row['created_at']);
                 }
-        echo "</tbody>";
-        echo "</table>";
+            }
+
+            if (!isset($visitor_groups[$group_key])) {
+                $visitor_groups[$group_key] = [
+                    'label' => $group_label,
+                    'total' => 0,
+                    'checked_in' => 0,
+                    'checked_out' => 0,
+                    'rows' => []
+                ];
+            }
+
+            $status_icon = ($status === 'active') ? '🟢' : '🔴';
+
+            $inactive_display = '';
+            if (!empty($row['inactive_at']) && $status === 'inactive') {
+                try {
+                    $dt = new DateTime($row['inactive_at'], new DateTimeZone('UTC'));
+                    $dt->setTimezone(new DateTimeZone('Asia/Manila'));
+                    $inactive_display = $dt->format('n/j/Y') . '<br>' . $dt->format('g:i A');
+                } catch (Exception $e) {
+                    $inactive_display = '';
+                }
+            }
+
+            $action_button = '';
+            if ($status === 'active') {
+                $action_button = "<button type='button' class='btn-inactive' data-id='$visitor_id' style='background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: 500;'>Check Out</button>";
+            }
+
+            $visitor_groups[$group_key]['total']++;
+            if ($status === 'inactive') {
+                $visitor_groups[$group_key]['checked_out']++;
+            } else {
+                $visitor_groups[$group_key]['checked_in']++;
+            }
+
+            $visitor_groups[$group_key]['rows'][] = "<tr class='visitor-row' data-visitor-id='$visitor_id'>
+                                <td><span class='id-badge'>#$vid</span></td>
+                                <td style='text-align:center'><strong>$vname</strong></td>
+                                <td style='text-align:center'>$vcontact</td>
+                                <td style='text-align:center'>$created_display</td>
+                                <td style='text-align:center'><span class='status-icon' data-status='$status'>$status_icon</span></td>
+                                <td style='text-align:center'>$inactive_display</td>
+                                <td style='text-align:center'>$action_button</td>
+                            </tr>";
+                }
+
+        echo "<div class='visitor-groups' id='visitorGroups'>";
+        $is_first_group = true;
+        foreach ($visitor_groups as $group_key => $group) {
+            $safe_group_key = htmlspecialchars($group_key);
+            $safe_group_label = htmlspecialchars($group['label']);
+            $expanded = $is_first_group ? 'true' : 'false';
+            $hidden_attr = $is_first_group ? '' : ' hidden';
+
+            echo "<section class='date-group' data-date-group='$safe_group_key'>";
+            echo "<button type='button' class='date-group-toggle' aria-expanded='$expanded'>
+                    <span class='date-group-title-wrap'>
+                        <span class='date-group-icon'>🗓️</span>
+                        <span>
+                            <span class='date-group-title'>$safe_group_label</span>
+                            <span class='date-group-subtitle'>{$group['total']} visitor(s) recorded</span>
+                        </span>
+                    </span>
+                    <span class='date-group-metrics'>
+                        <span class='date-chip total'>Total {$group['total']}</span>
+                        <span class='date-chip checked-in'>In {$group['checked_in']}</span>
+                        <span class='date-chip checked-out'>Out {$group['checked_out']}</span>
+                        <span class='date-group-caret' aria-hidden='true'>▾</span>
+                    </span>
+                  </button>";
+
+            echo "<div class='date-group-body'$hidden_attr>";
+            echo "<div class='table-responsive'>";
+            echo "<table class='visitor-table'>";
+            echo "<thead>
+                    <tr>
+                        <th style='text-align:center'>ID</th>
+                        <th style='text-align:center'>Full Name</th>
+                        <th style='text-align:center'>Contact Number</th>
+                        <th style='text-align:center'>Checked In</th>
+                        <th style='text-align:center'>Status</th>
+                        <th style='text-align:center'>Checked Out</th>
+                        <th style='text-align:center'>Actions</th>
+                    </tr>
+                  </thead>";
+            echo "<tbody>" . implode('', $group['rows']) . "</tbody>";
+            echo "</table>";
+            echo "</div>";
+            echo "</div>";
+            echo "</section>";
+
+            $is_first_group = false;
+        }
         echo "</div>";
         
         // total_count was already calculated before rendering the table
@@ -270,30 +319,85 @@ if ($conn) {
     document.addEventListener('DOMContentLoaded', function(){
         const urlParams = new URLSearchParams(window.location.search);
         let highlightId = urlParams.get('highlight') || '';
+        const dateGroups = Array.from(document.querySelectorAll('.date-group'));
+
+        function setGroupExpanded(group, expanded) {
+            if (!group) return;
+            const toggle = group.querySelector('.date-group-toggle');
+            const body = group.querySelector('.date-group-body');
+            if (!toggle || !body) return;
+
+            toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            body.hidden = !expanded;
+        }
+
+        function updateSummaryCounts() {
+            const rows = Array.from(document.querySelectorAll('.visitor-row'));
+            const total = rows.length;
+            const checkedOut = rows.filter(row => {
+                const icon = row.querySelector('.status-icon');
+                return icon && icon.getAttribute('data-status') === 'inactive';
+            }).length;
+            const checkedIn = total - checkedOut;
+
+            const totalEl = document.getElementById('summaryTotalCount');
+            const activeEl = document.getElementById('summaryActiveCount');
+            const inactiveEl = document.getElementById('summaryInactiveCount');
+
+            if (totalEl) totalEl.textContent = total;
+            if (activeEl) activeEl.textContent = checkedIn;
+            if (inactiveEl) inactiveEl.textContent = checkedOut;
+        }
+
+        function updateGroupCounts(group) {
+            if (!group) return;
+            const rows = Array.from(group.querySelectorAll('.visitor-row'));
+            const total = rows.length;
+            const checkedOut = rows.filter(row => {
+                const icon = row.querySelector('.status-icon');
+                return icon && icon.getAttribute('data-status') === 'inactive';
+            }).length;
+            const checkedIn = total - checkedOut;
+
+            const subtitle = group.querySelector('.date-group-subtitle');
+            const totalChip = group.querySelector('.date-chip.total');
+            const checkedInChip = group.querySelector('.date-chip.checked-in');
+            const checkedOutChip = group.querySelector('.date-chip.checked-out');
+
+            if (subtitle) subtitle.textContent = `${total} visitor(s) recorded`;
+            if (totalChip) totalChip.textContent = `Total ${total}`;
+            if (checkedInChip) checkedInChip.textContent = `In ${checkedIn}`;
+            if (checkedOutChip) checkedOutChip.textContent = `Out ${checkedOut}`;
+        }
+
+        dateGroups.forEach(group => {
+            const toggle = group.querySelector('.date-group-toggle');
+            if (!toggle) return;
+
+            toggle.addEventListener('click', function(){
+                const expanded = toggle.getAttribute('aria-expanded') === 'true';
+                setGroupExpanded(group, !expanded);
+            });
+        });
+
         // normalise: strip leading # if present
         if (highlightId.startsWith('#')) {
             highlightId = highlightId.slice(1);
         }
         
         if (highlightId) {
-            const visitorTable = document.getElementById('visitorTable');
-            const rows = visitorTable.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-            
-            Array.from(rows).forEach(row => {
-                const firstCell = row.getElementsByTagName('td')[0];
-                const cellId = firstCell ? firstCell.textContent.trim().replace(/^#/, '') : '';
-                if (cellId === highlightId) {
-                    row.style.backgroundColor = '#c8e6c9';
-                    row.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.6)';
-                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    
-                    // Auto-remove highlight after 5 seconds
-                    setTimeout(() => {
-                        row.style.backgroundColor = '';
-                        row.style.boxShadow = '';
-                    }, 5000);
-                }
-            });
+            const row = document.querySelector(`tr[data-visitor-id='${highlightId}']`);
+            if (row) {
+                setGroupExpanded(row.closest('.date-group'), true);
+                row.style.backgroundColor = '#c8e6c9';
+                row.style.boxShadow = '0 0 15px rgba(76, 175, 80, 0.6)';
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                setTimeout(() => {
+                    row.style.backgroundColor = '';
+                    row.style.boxShadow = '';
+                }, 5000);
+            }
         }
 
         // Handle Inactive button clicks
@@ -331,6 +435,9 @@ if ($conn) {
                         if (actionCell) {
                             actionCell.innerHTML = '';
                         }
+
+                        updateGroupCounts(row.closest('.date-group'));
+                        updateSummaryCounts();
                     } else {
                         alert('Error updating status: ' + data.message);
                     }
@@ -348,15 +455,18 @@ if ($conn) {
     const searchInput = document.getElementById('searchInput');
     const searchSuggestions = document.getElementById('searchSuggestions');
 
+    function updateVisibleDateGroups() {
+        document.querySelectorAll('.date-group').forEach(group => {
+            const rows = Array.from(group.querySelectorAll('.visitor-row'));
+            const hasVisibleRows = rows.some(row => row.style.display !== 'none');
+            group.style.display = hasVisibleRows ? '' : 'none';
+        });
+    }
+
     function populateAllVisitors() {
         if (allVisitorsCache.length > 0) return;
 
-        const visitorTable = document.getElementById('visitorTable');
-        if (!visitorTable) return;
-        
-        const tbody = visitorTable.getElementsByTagName('tbody')[0];
-        const rows = tbody.getElementsByTagName('tr');
-        
+        const rows = document.querySelectorAll('.visitor-row');
         Array.from(rows).forEach(row => {
             const cells = row.getElementsByTagName('td');
             if (cells.length >= 2) {
@@ -365,7 +475,8 @@ if ($conn) {
                     name: cells[1].textContent.trim(),
                     contact: cells[2].textContent.trim(),
                     dateTime: cells[3].textContent.trim(),
-                    row: row
+                    row: row,
+                    group: row.closest('.date-group')
                 });
             }
         });
@@ -385,11 +496,25 @@ if ($conn) {
             li.style.cssText = 'padding: 12px 16px; cursor: pointer; border-bottom: 1px solid #eee; transition: background-color 0.2s;';
             li.onmouseover = function() { this.style.backgroundColor = '#f5f5f5'; };
             li.onmouseout = function() { this.style.backgroundColor = 'white'; };
-            li.textContent = visitor.name + ' • ' + visitor.contact + ' • ' + visitor.dateTime;
+            const contactText = visitor.contact || 'No contact';
+            li.textContent = visitor.name + ' • ' + contactText + ' • ' + visitor.dateTime;
             
             li.addEventListener('click', function(){
                 searchInput.value = visitor.name;
                 filterTable();
+                const matchingRow = visitor.row;
+                const matchingGroup = visitor.group;
+                if (matchingGroup) {
+                    const toggle = matchingGroup.querySelector('.date-group-toggle');
+                    const body = matchingGroup.querySelector('.date-group-body');
+                    if (toggle && body) {
+                        toggle.setAttribute('aria-expanded', 'true');
+                        body.hidden = false;
+                    }
+                }
+                if (matchingRow) {
+                    matchingRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
                 searchSuggestions.innerHTML = '';
                 searchSuggestions.style.display = 'none';
             });
@@ -399,18 +524,30 @@ if ($conn) {
         
         if (sorted.length > 0) {
             searchSuggestions.style.display = 'block';
+        } else {
+            searchSuggestions.style.display = 'none';
         }
     }
 
     function filterTable() {
         const query = searchInput.value.toLowerCase().trim();
         populateAllVisitors();
-        const visitorTable = document.getElementById('visitorTable');
-        const tbody = visitorTable.getElementsByTagName('tbody')[0];
         
         if (!query) {
             displaySuggestions(allVisitorsCache);
-            Array.from(tbody.getElementsByTagName('tr')).forEach(row => row.style.display = '');
+            allVisitorsCache.forEach(visitor => {
+                visitor.row.style.display = '';
+            });
+            document.querySelectorAll('.date-group').forEach((group, index) => {
+                group.style.display = '';
+                const toggle = group.querySelector('.date-group-toggle');
+                const body = group.querySelector('.date-group-body');
+                if (toggle && body) {
+                    const shouldExpand = index === 0;
+                    toggle.setAttribute('aria-expanded', shouldExpand ? 'true' : 'false');
+                    body.hidden = !shouldExpand;
+                }
+            });
             return;
         }
 
@@ -422,10 +559,21 @@ if ($conn) {
         );
 
         displaySuggestions(matches);
-        
-        Array.from(tbody.getElementsByTagName('tr')).forEach(row => {
-            row.style.display = matches.some(m => m.row === row) ? '' : 'none';
+
+        allVisitorsCache.forEach(visitor => {
+            const matched = matches.some(match => match.row === visitor.row);
+            visitor.row.style.display = matched ? '' : 'none';
+            if (matched && visitor.group) {
+                const toggle = visitor.group.querySelector('.date-group-toggle');
+                const body = visitor.group.querySelector('.date-group-body');
+                if (toggle && body) {
+                    toggle.setAttribute('aria-expanded', 'true');
+                    body.hidden = false;
+                }
+            }
         });
+
+        updateVisibleDateGroups();
     }
 
     // Hide suggestions when clicking outside
