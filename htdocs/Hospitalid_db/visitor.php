@@ -72,11 +72,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_visitor']) && $co
         $add_error = $add_error ?: 'Contact number must be exactly 11 digits.';
     }
     $contact_number = $conn->real_escape_string($contact_number_digits);
+    $valid_id = 'Not provided';
 
     if ($add_error === '') {
         // Use prepared statement for security
-        $stmt = $conn->prepare("INSERT INTO visitor (full_name, contact_number) VALUES (?, ?)");
-        $stmt->bind_param("ss", $full_name, $contact_number);
+        $stmt = $conn->prepare("INSERT INTO visitor (full_name, contact_number, valid_id) VALUES (?, ?, ?)");
+        $stmt->bind_param("sss", $full_name, $contact_number, $valid_id);
         
         if ($stmt->execute()) {
             $new_id = $conn->insert_id;
