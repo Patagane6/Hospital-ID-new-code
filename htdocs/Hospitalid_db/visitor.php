@@ -161,7 +161,7 @@ if (isset($_GET['delete']) && $conn) {
                 </div>
 
                 <div class="form-group">
-                    <label for="contact_number">Contact Number</label>
+                    <label for="contact_number">Contact Number (Optional)</label>
                     <input type="text" name="contact_number" id="contact_number" 
                            placeholder="09XXXXXXXXX" inputmode="numeric" 
                            pattern="\d{11}" maxlength="11" minlength="11" 
